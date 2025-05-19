@@ -2,6 +2,7 @@
   "name": "my-schedule-manager",
   "version": "0.1.0",
   "private": true,
+  "homepage": "https://hirohirohiro3.github.io/my-schedule-manager2",
   "dependencies": {
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
@@ -17,7 +18,9 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build"
   },
   "eslintConfig": {
     "extends": [
@@ -36,5 +39,12 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.0.0-alpha.13", // 前回インストールしたバージョンに合わせるか、最新の安定版を確認
+    "autoprefixer": "^10.4.19", // 前回インストールしたバージョンに合わせるか、最新の安定版を確認
+    "gh-pages": "^6.3.0", // このバージョンは画像から読み取りました
+    "postcss": "^8.4.39", // 前回インストールしたバージョンに合わせるか、最新の安定版を確認
+    "tailwindcss": "^3.4.6" // 前回インストールしたバージョンに合わせるか、最新の安定版を確認
   }
 }
