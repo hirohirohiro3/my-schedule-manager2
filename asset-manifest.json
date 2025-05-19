@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/my-schedule-manager2/static/css/main.dee3b417.css",
+    "main.js": "/my-schedule-manager2/static/js/main.fb8f74ab.js",
+    "static/js/453.a349ef6b.chunk.js": "/my-schedule-manager2/static/js/453.a349ef6b.chunk.js",
+    "index.html": "/my-schedule-manager2/index.html",
+    "main.dee3b417.css.map": "/my-schedule-manager2/static/css/main.dee3b417.css.map",
+    "main.fb8f74ab.js.map": "/my-schedule-manager2/static/js/main.fb8f74ab.js.map",
+    "453.a349ef6b.chunk.js.map": "/my-schedule-manager2/static/js/453.a349ef6b.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.dee3b417.css",
+    "static/js/main.fb8f74ab.js"
+  ]
+}
