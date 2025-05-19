@@ -1,6 +1,5 @@
 import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
 // lucide-react からアイコンをインポート
-// 未使用のアイコン (Eye, EyeOff, Edit2, BookOpen) を削除済み
 import { PlusCircle, Trash2, ChevronLeft, ChevronRight, CalendarDays, Clock, User, FileText, X, Ban, CheckCircle2, Briefcase, Download, Image as ImageIcon, AlertTriangle, Coffee, Zap, Calendar as CalendarIcon, Columns } from 'lucide-react';
 // 注意: html2canvas はグローバルに読み込まれている必要があります。
 // 例: HTMLファイルの <head> 内に以下のスクリプトタグを追加します。
@@ -9,10 +8,11 @@ import { PlusCircle, Trash2, ChevronLeft, ChevronRight, CalendarDays, Clock, Use
 // Appointment Context
 const AppointmentContext = createContext();
 
+// 新しいカラースキームに合わせた予定の種類
 const scheduleTypes = {
-  counseling: { label: 'カウンセリング', color: 'emerald', icon: <User className="w-4 h-4 mr-1.5" /> },
-  work: { label: '仕事', color: 'blue', icon: <Briefcase className="w-4 h-4 mr-1.5" /> },
-  private: { label: 'プライベート', color: 'orange', icon: <Coffee className="w-4 h-4 mr-1.5" /> },
+  counseling: { label: 'カウンセリング', color: 'pink', icon: <User className="w-4 h-4 mr-1.5" /> }, // ピンク系
+  work: { label: '仕事', color: 'purple', icon: <Briefcase className="w-4 h-4 mr-1.5" /> },   // ラベンダー(紫)系
+  private: { label: 'プライベート', color: 'red', icon: <Coffee className="w-4 h-4 mr-1.5" /> },  // コーラル(赤系ピンク)
 };
 
 const AppointmentProvider = ({ children }) => {
@@ -25,7 +25,6 @@ const AppointmentProvider = ({ children }) => {
     return localData ? JSON.parse(localData) : [];
   });
 
-  // isModalOpen の初期値を false に設定
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState({ type: 'form', data: null });
   const [lastSavedAppointment, setLastSavedAppointment] = useState(null);
@@ -45,7 +44,7 @@ const AppointmentProvider = ({ children }) => {
     setAppointments([...appointments, newAppointment].sort((a,b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`)));
     setLastSavedAppointment(newAppointment);
     setModalContent({ type: 'confirmation', data: newAppointment });
-    setIsModalOpen(true); // 確認モーダルを表示
+    setIsModalOpen(true);
   };
 
   const updateAppointment = (updatedAppointment) => {
@@ -56,7 +55,7 @@ const AppointmentProvider = ({ children }) => {
     );
     setLastSavedAppointment(updatedAppointment);
     setModalContent({ type: 'confirmation', data: updatedAppointment });
-    setIsModalOpen(true); // 確認モーダルを表示
+    setIsModalOpen(true);
   };
 
   const deleteAppointment = (id) => {
@@ -97,7 +96,7 @@ const AppointmentProvider = ({ children }) => {
   };
 
   const closeModal = () => {
-    setIsModalOpen(false); // 単純にモーダルを閉じる
+    setIsModalOpen(false);
   };
   
   const showPhotoSaveInfo = () => {
@@ -172,7 +171,7 @@ const MonthViewCalendar = () => {
     const daysArray = [];
 
     for (let i = 0; i < firstDay; i++) {
-      daysArray.push(<div key={`empty-${i}`} className="border p-2 h-24 md:h-28 bg-gray-50"></div>);
+      daysArray.push(<div key={`empty-${i}`} className="border border-rose-100 p-1 h-20 sm:p-2 sm:h-24 md:h-28 bg-rose-50"></div>);
     }
 
     for (let day = 1; day <= numDays; day++) {
@@ -186,37 +185,37 @@ const MonthViewCalendar = () => {
       let dotColorClass = '';
       if (dayAppointments.length > 0) {
           const typesToday = new Set(dayAppointments.map(a => a.scheduleType || 'counseling'));
-          if (typesToday.has('counseling')) dotColorClass = 'bg-emerald-500';
-          else if (typesToday.has('work')) dotColorClass = 'bg-blue-500';
-          else if (typesToday.has('private')) dotColorClass = 'bg-orange-500';
-          else dotColorClass = 'bg-gray-500';
+          if (typesToday.has('counseling')) dotColorClass = `bg-${scheduleTypes.counseling.color}-500`;
+          else if (typesToday.has('work')) dotColorClass = `bg-${scheduleTypes.work.color}-500`;
+          else if (typesToday.has('private')) dotColorClass = `bg-${scheduleTypes.private.color}-500`;
+          else dotColorClass = 'bg-gray-400';
       }
 
       daysArray.push(
         <div
           key={day}
-          className={`border p-2 h-24 md:h-28 cursor-pointer transition-all duration-150 ease-in-out relative
-            ${isUnavailable ? 'bg-gray-300 text-gray-500 line-through hover:bg-gray-400' : 'hover:bg-blue-50'}
-            ${isSelectedDate && !isUnavailable ? 'bg-blue-200 ring-2 ring-blue-500 shadow-md' : ''}
-            ${isSelectedDate && isUnavailable ? 'bg-gray-400 ring-2 ring-gray-600 shadow-md' : ''}
-            ${isTodayDate && !isUnavailable ? 'font-bold text-blue-700 bg-blue-100' : ''}
-            ${isTodayDate && isUnavailable ? 'font-bold text-gray-600' : ''}
+          className={`border border-rose-100 p-1 h-20 sm:p-2 sm:h-24 md:h-28 cursor-pointer transition-all duration-150 ease-in-out relative
+            ${isUnavailable ? 'bg-gray-200 text-gray-400 line-through hover:bg-gray-300' : 'hover:bg-pink-50'}
+            ${isSelectedDate && !isUnavailable ? 'bg-pink-200 ring-2 ring-pink-500 shadow-md' : ''}
+            ${isSelectedDate && isUnavailable ? 'bg-gray-300 ring-2 ring-gray-500 shadow-md' : ''}
+            ${isTodayDate && !isUnavailable ? 'font-bold text-rose-600 bg-rose-100' : ''}
+            ${isTodayDate && isUnavailable ? 'font-bold text-gray-500' : ''}
           `}
           onClick={() => handleDateClick(day)}
         >
-          <div className={`text-sm ${isTodayDate && !isUnavailable ? 'text-blue-700' : ''}`}>{day}</div>
+          <div className={`text-xs sm:text-sm ${isTodayDate && !isUnavailable ? 'text-rose-700' : 'text-gray-600'}`}>{day}</div>
           {dotColorClass && (
-            <div className={`absolute bottom-1.5 right-1.5 w-2 h-2 rounded-full ${dotColorClass}`}></div>
+            <div className={`absolute bottom-1 right-1 sm:bottom-1.5 sm:right-1.5 w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${dotColorClass}`}></div>
           )}
-          <div className="mt-1 space-y-0.5 overflow-y-auto max-h-12 text-xs">
-            {dayAppointments.slice(0,2).map(app => (
-              <div key={app.id} className={`p-0.5 rounded truncate text-white text-[9px] ${
-                scheduleTypes[app.scheduleType || 'counseling']?.color ? `bg-${scheduleTypes[app.scheduleType || 'counseling'].color}-500` : 'bg-gray-500'
+          <div className="mt-0.5 sm:mt-1 space-y-0.5 overflow-y-auto max-h-10 sm:max-h-12 text-[8px] sm:text-xs">
+            {dayAppointments.slice(0,1).map(app => (
+              <div key={app.id} className={`p-0.5 rounded truncate text-white ${
+                scheduleTypes[app.scheduleType || 'counseling']?.color ? `bg-${scheduleTypes[app.scheduleType || 'counseling'].color}-500` : 'bg-gray-400'
               }`}>
                 {app.title || app.clientName}
               </div>
             ))}
-             {isUnavailable && dayAppointments.length === 0 && <span className="text-gray-500 text-[10px]">(不可)</span>}
+             {isUnavailable && dayAppointments.length === 0 && <span className="text-gray-400 text-[9px] sm:text-[10px]">(不可)</span>}
           </div>
         </div>
       );
@@ -227,26 +226,26 @@ const MonthViewCalendar = () => {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-gray-200 transition-colors" aria-label="前の月へ">
-          <ChevronLeft className="w-6 h-6 text-gray-600" />
+      <div className="flex items-center justify-between mb-2 sm:mb-4">
+        <button onClick={() => changeMonth(-1)} className="p-1.5 sm:p-2 rounded-full hover:bg-pink-100 transition-colors" aria-label="前の月へ">
+          <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 text-rose-500" />
         </button>
-        <h2 className="text-xl sm:text-2xl font-semibold text-gray-700">
+        <h2 className="text-lg sm:text-xl md:text-2xl font-semibold text-rose-700">
           {currentMonthDate.getFullYear()}年 {currentMonthDate.toLocaleString('ja-JP', { month: 'long' })}
         </h2>
-        <button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-gray-200 transition-colors" aria-label="次の月へ">
-          <ChevronRight className="w-6 h-6 text-gray-600" />
+        <button onClick={() => changeMonth(1)} className="p-1.5 sm:p-2 rounded-full hover:bg-pink-100 transition-colors" aria-label="次の月へ">
+          <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 text-rose-500" />
         </button>
       </div>
-      <div className="grid grid-cols-7 gap-1 text-center font-medium text-gray-600 mb-2 text-sm sm:text-base">
+      <div className="grid grid-cols-7 gap-px sm:gap-1 text-center font-medium text-rose-600 mb-1 sm:mb-2 text-xs sm:text-sm md:text-base">
         {dayLabels.map(label => <div key={label}>{label}</div>)}
       </div>
-      <div className="grid grid-cols-7 gap-1">{renderCalendarDays()}</div>
+      <div className="grid grid-cols-7 gap-px sm:gap-1 border border-rose-100 rounded-md overflow-hidden">{renderCalendarDays()}</div>
     </>
   );
 };
 
-// Week View Calendar
+// Week View Calendar (MonthViewCalendarと同様のカラースキームとレスポンシブ対応を適用)
 const WeekViewCalendar = () => {
   const { appointments, unavailableDates, selectedDate, setSelectedDate } = useContext(AppointmentContext);
   const [currentWeekStartDate, setCurrentWeekStartDate] = useState(() => {
@@ -293,21 +292,21 @@ const WeekViewCalendar = () => {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <button onClick={() => changeWeek(-1)} className="p-2 rounded-full hover:bg-gray-200 transition-colors" aria-label="前の週へ">
-          <ChevronLeft className="w-6 h-6 text-gray-600" />
+      <div className="flex items-center justify-between mb-2 sm:mb-4">
+        <button onClick={() => changeWeek(-1)} className="p-1.5 sm:p-2 rounded-full hover:bg-pink-100 transition-colors" aria-label="前の週へ">
+          <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 text-rose-500" />
         </button>
-        <h2 className="text-lg sm:text-xl font-semibold text-gray-700">
+        <h2 className="text-base sm:text-lg md:text-xl font-semibold text-rose-700 text-center">
           {formatDate(daysOfWeek[0], 'YYYY年M月D日')} - {formatDate(daysOfWeek[6], 'M月D日')}
         </h2>
-        <button onClick={() => changeWeek(1)} className="p-2 rounded-full hover:bg-gray-200 transition-colors" aria-label="次の週へ">
-          <ChevronRight className="w-6 h-6 text-gray-600" />
+        <button onClick={() => changeWeek(1)} className="p-1.5 sm:p-2 rounded-full hover:bg-pink-100 transition-colors" aria-label="次の週へ">
+          <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 text-rose-500" />
         </button>
       </div>
-      <div className="grid grid-cols-7 gap-1 text-center font-medium text-gray-600 mb-2 text-sm sm:text-base">
+      <div className="grid grid-cols-7 gap-px sm:gap-1 text-center font-medium text-rose-600 mb-1 sm:mb-2 text-xs sm:text-sm md:text-base">
         {dayLabels.map(label => <div key={label}>{label}</div>)}
       </div>
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-px sm:gap-1 border border-rose-100 rounded-md overflow-hidden">
         {daysOfWeek.map((day, index) => {
           const dateStr = formatDate(day);
           const dayAppointments = appointments.filter(app => app.date === dateStr);
@@ -318,36 +317,37 @@ const WeekViewCalendar = () => {
           let dotColorClass = '';
           if (dayAppointments.length > 0) {
               const typesToday = new Set(dayAppointments.map(a => a.scheduleType || 'counseling'));
-              if (typesToday.has('counseling')) dotColorClass = 'bg-emerald-500';
-              else if (typesToday.has('work')) dotColorClass = 'bg-blue-500';
-              else if (typesToday.has('private')) dotColorClass = 'bg-orange-500';
-              else dotColorClass = 'bg-gray-500';
+              if (typesToday.has('counseling')) dotColorClass = `bg-${scheduleTypes.counseling.color}-500`;
+              else if (typesToday.has('work')) dotColorClass = `bg-${scheduleTypes.work.color}-500`;
+              else if (typesToday.has('private')) dotColorClass = `bg-${scheduleTypes.private.color}-500`;
+              else dotColorClass = 'bg-gray-400';
           }
 
           return (
             <div
               key={index}
-              className={`border p-2 h-28 md:h-32 cursor-pointer transition-colors relative
-                ${isUnavailable ? 'bg-gray-300 text-gray-500 line-through hover:bg-gray-400' : 'hover:bg-blue-50'}
-                ${isSelectedDate && !isUnavailable ? 'bg-blue-200 ring-2 ring-blue-500 shadow-md' : ''}
-                ${isSelectedDate && isUnavailable ? 'bg-gray-400 ring-2 ring-gray-600 shadow-md' : ''}
-                ${isTodayDate && !isUnavailable ? 'font-bold text-blue-700 bg-blue-100' : ''}
+              className={`border border-rose-100 p-1 h-24 sm:p-2 sm:h-28 md:h-32 cursor-pointer transition-colors relative
+                ${isUnavailable ? 'bg-gray-200 text-gray-400 line-through hover:bg-gray-300' : 'hover:bg-pink-50'}
+                ${isSelectedDate && !isUnavailable ? 'bg-pink-200 ring-2 ring-pink-500 shadow-md' : ''}
+                ${isSelectedDate && isUnavailable ? 'bg-gray-300 ring-2 ring-gray-500 shadow-md' : ''}
+                ${isTodayDate && !isUnavailable ? 'font-bold text-rose-600 bg-rose-100' : ''}
+                ${isTodayDate && isUnavailable ? 'font-bold text-gray-500' : ''}
               `}
               onClick={() => handleDateClick(day)}
             >
-              <div className={`text-sm ${isTodayDate && !isUnavailable ? 'text-blue-700' : ''}`}>{day.getDate()}</div>
+              <div className={`text-xs sm:text-sm ${isTodayDate && !isUnavailable ? 'text-rose-700' : 'text-gray-600'}`}>{day.getDate()}</div>
               {dotColorClass && (
-                <div className={`absolute bottom-1.5 right-1.5 w-2 h-2 rounded-full ${dotColorClass}`}></div>
+                <div className={`absolute bottom-1 right-1 sm:bottom-1.5 sm:right-1.5 w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${dotColorClass}`}></div>
               )}
-              <div className="mt-1 space-y-0.5 overflow-y-auto max-h-16 text-xs">
-                {dayAppointments.slice(0,3).map(app => (
-                  <div key={app.id} className={`p-0.5 rounded truncate text-white text-[9px] ${
-                    scheduleTypes[app.scheduleType || 'counseling']?.color ? `bg-${scheduleTypes[app.scheduleType || 'counseling'].color}-500` : 'bg-gray-500'
+              <div className="mt-0.5 sm:mt-1 space-y-0.5 overflow-y-auto max-h-12 sm:max-h-16 text-[8px] sm:text-xs">
+                {dayAppointments.slice(0,2).map(app => (
+                  <div key={app.id} className={`p-0.5 rounded truncate text-white ${
+                    scheduleTypes[app.scheduleType || 'counseling']?.color ? `bg-${scheduleTypes[app.scheduleType || 'counseling'].color}-500` : 'bg-gray-400'
                   }`}>
                     {app.title || app.clientName}
                   </div>
                 ))}
-                {isUnavailable && dayAppointments.length === 0 && <span className="text-gray-500 text-[10px]">(不可)</span>}
+                {isUnavailable && dayAppointments.length === 0 && <span className="text-gray-400 text-[9px] sm:text-[10px]">(不可)</span>}
               </div>
             </div>
           );
@@ -363,25 +363,27 @@ const Calendar = () => {
   const { viewMode, setViewMode, openModal, selectedDate, unavailableDates } = useContext(AppointmentContext);
 
   return (
-    <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full max-w-5xl mx-auto">
-      <div className="flex justify-end mb-4 space-x-2">
+    <div className="bg-white p-2 sm:p-4 md:p-6 rounded-lg shadow-xl w-full max-w-5xl mx-auto border border-rose-200">
+      <div className="flex justify-end mb-2 sm:mb-4 space-x-1 sm:space-x-2">
         <button
           onClick={() => setViewMode('month')}
-          className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors ${viewMode === 'month' ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+          className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-md text-[10px] sm:text-xs md:text-sm font-medium transition-colors shadow-sm
+            ${viewMode === 'month' ? 'bg-rose-500 text-white hover:bg-rose-600' : 'bg-pink-100 text-rose-700 hover:bg-pink-200'}`}
         >
-          <CalendarIcon className="w-4 h-4 inline mr-1.5" />月表示
+          <CalendarIcon className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1 sm:mr-1.5" />月表示
         </button>
         <button
           onClick={() => setViewMode('week')}
-          className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors ${viewMode === 'week' ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+          className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-md text-[10px] sm:text-xs md:text-sm font-medium transition-colors shadow-sm
+          ${viewMode === 'week' ? 'bg-rose-500 text-white hover:bg-rose-600' : 'bg-pink-100 text-rose-700 hover:bg-pink-200'}`}
         >
-          <Columns className="w-4 h-4 inline mr-1.5" />週表示
+          <Columns className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1 sm:mr-1.5" />週表示
         </button>
       </div>
 
       {viewMode === 'month' ? <MonthViewCalendar /> : <WeekViewCalendar />}
       
-      <div className="mt-6 text-center">
+      <div className="mt-4 sm:mt-6 text-center">
         <button
           onClick={() => {
             const formattedCurrentSelectedDate = formatDate(selectedDate);
@@ -391,9 +393,9 @@ const Calendar = () => {
             }
             openModal('form', { date: formattedCurrentSelectedDate });
           }}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-5 sm:px-6 rounded-lg shadow-md transition-transform transform hover:scale-105 flex items-center justify-center mx-auto text-sm sm:text-base"
+          className="bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2 px-3 sm:py-2.5 sm:px-5 md:px-6 rounded-lg shadow-md transition-transform transform hover:scale-105 flex items-center justify-center mx-auto text-xs sm:text-sm md:text-base"
         >
-          <PlusCircle className="w-5 h-5 mr-2" />
+          <PlusCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2" />
           <span>新しい予定を追加</span>
         </button>
       </div>
@@ -476,47 +478,47 @@ const AppointmentList = () => {
   }
   
   return (
-    <div className="mt-8">
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-4 pb-3 border-b border-gray-200">
-        <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-2 sm:mb-0">
+    <div className="mt-6 sm:mt-8">
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-3 sm:mb-4 pb-2 sm:pb-3 border-b border-rose-200">
+        <h3 className="text-base sm:text-lg md:text-xl font-semibold text-rose-700 mb-2 sm:mb-0">
           {formatDate(selectedDate, 'YYYY年M月D日')} ({dayLabels[selectedDate.getDay()]}) のスケジュール
         </h3>
         <button
           onClick={() => toggleUnavailableDate(formattedSelectedDate)}
-          className={`font-semibold py-2 px-4 rounded-lg shadow-sm text-xs sm:text-sm flex items-center transition-colors
+          className={`font-semibold py-1.5 px-3 sm:py-2 sm:px-4 rounded-lg shadow-sm text-xs sm:text-sm flex items-center transition-colors
             ${isSelectedDateUnavailable ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'}`}
         >
-          {isSelectedDateUnavailable ? <CheckCircle2 className="w-4 h-4 mr-1.5" /> : <Ban className="w-4 h-4 mr-1.5" />}
+          {isSelectedDateUnavailable ? <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-1.5" /> : <Ban className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-1.5" />}
           {isSelectedDateUnavailable ? '予約可能にする' : '予約不可にする'}
         </button>
       </div>
 
       {isSelectedDateUnavailable ? (
-        <div className="p-4 bg-yellow-50 border border-yellow-300 rounded-lg text-center text-yellow-700">
-          <p className="font-semibold">{formattedSelectedDate} は終日予定を入力できません。</p>
+        <div className="p-3 sm:p-4 bg-yellow-100 border border-yellow-300 rounded-lg text-center text-yellow-800">
+          <p className="font-semibold text-sm sm:text-base">{formatDate(selectedDate)} は終日予定を入力できません。</p>
         </div>
       ) : (
         <>
           {dailyAppointments.length > 0 && (
-             <div className="mb-6">
-              <h4 className="text-md sm:text-lg font-semibold text-gray-600 mb-2">今日の予定 (クリックで編集)</h4>
-              <ul className="space-y-2">
+             <div className="mb-4 sm:mb-6">
+              <h4 className="text-sm sm:text-md md:text-lg font-semibold text-gray-700 mb-1.5 sm:mb-2">今日の予定 (クリックで編集)</h4>
+              <ul className="space-y-1.5 sm:space-y-2">
                 {dailyAppointments.map(app => {
                   const typeInfo = scheduleTypes[app.scheduleType || 'counseling'];
                   return (
                     <li key={app.id} 
                         onClick={() => openModal('form', app)}
-                        className={`p-3 rounded-lg shadow hover:shadow-md transition-shadow border cursor-pointer 
+                        className={`p-2 sm:p-3 rounded-lg shadow hover:shadow-md transition-shadow border cursor-pointer 
                                     border-${typeInfo.color}-300 hover:border-${typeInfo.color}-500 bg-${typeInfo.color}-50`}>
                       <div className="flex justify-between items-center">
                         <div className="flex items-center">
-                          {React.cloneElement(typeInfo.icon, { className: `w-5 h-5 mr-2 text-${typeInfo.color}-600` })}
+                          {React.cloneElement(typeInfo.icon, { className: `w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-${typeInfo.color}-600` })}
                           <div>
-                            <p className={`font-semibold text-${typeInfo.color}-700 text-sm`}>
+                            <p className={`font-semibold text-${typeInfo.color}-700 text-xs sm:text-sm`}>
                               {app.title || app.clientName}
                             </p>
-                            <p className="text-gray-600 text-xs flex items-center mt-0.5">
-                              <Clock className="w-3 h-3 mr-1.5 text-gray-400" /> {app.time} ({app.duration}分)
+                            <p className="text-gray-600 text-[10px] sm:text-xs flex items-center mt-0.5">
+                              <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1 sm:mr-1.5 text-gray-400" /> {app.time} ({app.duration}分)
                             </p>
                           </div>
                         </div>
@@ -527,12 +529,12 @@ const AppointmentList = () => {
                                 deleteAppointment(app.id); 
                               }
                             }}
-                            className={`p-1.5 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full transition-colors`} aria-label="削除"
-                          > <Trash2 className="w-4 h-4" /> </button>
+                            className={`p-1 sm:p-1.5 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full transition-colors`} aria-label="削除"
+                          > <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" /> </button>
                       </div>
                        {app.notes && (
-                            <p className="text-gray-500 text-xs mt-2 border-t border-gray-200 pt-2 pl-7 flex items-start">
-                              <FileText className="w-3 h-3 mr-1.5 text-gray-400 flex-shrink-0 mt-0.5" />
+                            <p className="text-gray-500 text-[10px] sm:text-xs mt-1.5 sm:mt-2 border-t border-gray-200 pt-1.5 sm:pt-2 pl-6 sm:pl-7 flex items-start">
+                              <FileText className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1 sm:mr-1.5 text-gray-400 flex-shrink-0 mt-0.5" />
                               <span className="whitespace-pre-wrap break-all">{app.notes}</span>
                             </p>
                           )}
@@ -543,31 +545,31 @@ const AppointmentList = () => {
             </div>
           )}
           
-          <div className={`mt-6 ${dailyAppointments.length > 0 ? 'pt-6 border-t border-gray-200' : ''}`}>
-            <h4 className="text-md sm:text-lg font-semibold text-gray-600 mb-3 flex items-center">
-              <Clock className="w-5 h-5 mr-2 text-gray-500"/> タイムスケジュール (30分単位)
+          <div className={`mt-4 sm:mt-6 ${dailyAppointments.length > 0 ? 'pt-4 sm:pt-6 border-t border-rose-200' : ''}`}>
+            <h4 className="text-sm sm:text-md md:text-lg font-semibold text-gray-700 mb-2 sm:mb-3 flex items-center">
+              <Clock className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-gray-500"/> タイムスケジュール (30分単位)
             </h4>
             {dayStart >= dayEnd ? (
-                 <div className="flex flex-col items-center justify-center p-8 text-center bg-gray-50 rounded-lg border border-gray-300 shadow-inner" style={{ minHeight: '200px' }}>
-                    <Clock className="w-10 h-10 mx-auto text-gray-400 mb-3" />
-                    <p className="text-lg font-semibold text-gray-600">稼働時間が正しく設定されていません</p>
-                    <p className="text-xs text-gray-500 mt-1">開始時間と終了時間を確認してください。</p>
+                 <div className="flex flex-col items-center justify-center p-6 sm:p-8 text-center bg-rose-50 rounded-lg border border-rose-200 shadow-inner" style={{ minHeight: '150px' }}>
+                    <Clock className="w-8 h-8 sm:w-10 sm:h-10 mx-auto text-rose-400 mb-2 sm:mb-3" />
+                    <p className="text-md sm:text-lg font-semibold text-rose-600">稼働時間が正しく設定されていません</p>
+                    <p className="text-xs sm:text-sm text-rose-500 mt-1">開始時間と終了時間を確認してください。</p>
                 </div>
             ) : timeSlots.length > 0 ? (
-              <div className="border border-gray-300 rounded-lg shadow-sm overflow-hidden">
+              <div className="border border-rose-200 rounded-lg shadow-sm overflow-hidden">
                 {timeSlots.map((slot, index) => {
                   const typeInfo = scheduleTypes[slot.scheduleType] || {color: 'gray'}; 
-                  let bgColor = `bg-rose-100 hover:bg-rose-200`; 
-                  let textColor = `text-rose-900`;
-                  let iconToShow = <PlusCircle className="w-5 h-5 text-rose-600 opacity-70"/>;
+                  let bgColor = `bg-pink-100 hover:bg-pink-200`; 
+                  let textColor = `text-pink-900`;
+                  let iconToShow = <PlusCircle className="w-4 h-4 sm:w-5 sm:h-5 text-pink-600 opacity-70"/>;
 
                   if (slot.status === 'booked') {
                     bgColor = slot.isContinuation ? `bg-${typeInfo.color}-100` : `bg-${typeInfo.color}-200 hover:bg-${typeInfo.color}-300`;
                     textColor = `text-${typeInfo.color}-900`;
-                    iconToShow = !slot.isContinuation ? React.cloneElement(typeInfo.icon, { className: `w-4 h-4 text-${typeInfo.color}-700 opacity-90`}) : null;
+                    iconToShow = !slot.isContinuation ? React.cloneElement(typeInfo.icon, { className: `w-3 h-3 sm:w-4 sm:h-4 text-${typeInfo.color}-700 opacity-90`}) : null;
                   } else if (slot.status === 'past') {
-                    bgColor = 'bg-gray-200';
-                    textColor = 'text-gray-500';
+                    bgColor = 'bg-gray-100';
+                    textColor = 'text-gray-400';
                     iconToShow = null;
                   }
 
@@ -576,25 +578,25 @@ const AppointmentList = () => {
                       key={index}
                       onClick={slot.onClick}
                       disabled={!slot.onClick}
-                      className={`w-full flex items-center justify-between p-3 text-left border-b border-gray-200 last:border-b-0 transition-colors
+                      className={`w-full flex items-center justify-between p-2 sm:p-3 text-left border-b border-rose-100 last:border-b-0 transition-colors
                         ${bgColor} ${slot.status === 'past' ? 'cursor-not-allowed' : ''}`}
                       title={slot.status === 'available' ? `${slot.time} から予定追加` : (slot.appointment ? `${slot.appointment.title || slot.appointment.clientName} ${slot.time} (${slot.appointment.duration}分)` : '')}
                     >
-                      <span className={`text-base font-medium ${textColor}`}>
+                      <span className={`text-sm sm:text-base font-medium ${textColor}`}>
                         {slot.time}
                       </span>
-                      <div className="flex-grow text-right px-4">
+                      <div className="flex-grow text-right px-2 sm:px-4">
                         {slot.status === 'booked' && slot.appointment && !slot.isContinuation && (
-                          <span className={`text-base text-${typeInfo.color}-800 truncate`}>{slot.appointment.title || slot.appointment.clientName} ({slot.durationDisplay}分)</span>
+                          <span className={`text-xs sm:text-base text-${typeInfo.color}-800 truncate`}>{slot.appointment.title || slot.appointment.clientName} ({slot.durationDisplay}分)</span>
                         )}
                         {slot.status === 'booked' && slot.isContinuation && (
-                          <span className={`text-sm text-${typeInfo.color}-600`}>〃</span> 
+                          <span className={`text-[10px] sm:text-sm text-${typeInfo.color}-600`}>〃</span> 
                         )}
                         {slot.status === 'available' && (
-                          <span className="text-base text-rose-800">(空き)</span>
+                          <span className="text-sm sm:text-base text-pink-800">(空き)</span>
                         )}
                          {slot.status === 'past' && (
-                          <span className="text-base text-gray-500">(過去)</span>
+                          <span className="text-sm sm:text-base text-gray-500">(過去)</span>
                         )}
                       </div>
                       {iconToShow}
@@ -603,10 +605,10 @@ const AppointmentList = () => {
                 })}
               </div>
             ) : (
-               <div className="flex flex-col items-center justify-center p-8 text-center bg-gray-50 rounded-lg border border-gray-300 shadow-inner" style={{ minHeight: `200px` }}>
-                <Zap className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                <p className="text-xl font-semibold text-gray-700">本日は予定がありません</p>
-                <p className="text-sm text-gray-500 mt-2">新しい予定はカレンダー上部のボタンから追加できます。</p>
+               <div className="flex flex-col items-center justify-center p-6 sm:p-8 text-center bg-rose-50 rounded-lg border border-rose-200 shadow-inner" style={{ minHeight: `150px` }}>
+                <Zap className="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-rose-400 mb-3 sm:mb-4" />
+                <p className="text-lg sm:text-xl font-semibold text-rose-700">本日は予定がありません</p>
+                <p className="text-xs sm:text-sm text-rose-500 mt-1.5 sm:mt-2">新しい予定はカレンダー上部のボタンから追加できます。</p>
               </div>
             )}
           </div>
@@ -617,7 +619,7 @@ const AppointmentList = () => {
 };
 const dayLabels = ['日', '月', '火', '水', '木', '金', '土'];
 
-// Appointment Confirmation Image Component (変更なし)
+// Appointment Confirmation Image Component
 const AppointmentConfirmationImage = ({ appointment }) => {
   const imageRef = useRef(null);
   const { showPhotoSaveInfo } = useContext(AppointmentContext);
@@ -654,27 +656,27 @@ const AppointmentConfirmationImage = ({ appointment }) => {
   const typeInfo = scheduleTypes[appointment.scheduleType || 'counseling'];
 
   return (
-    <div className="mt-6 p-4 border border-gray-200 rounded-lg">
-        <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center">
-            <ImageIcon className="w-5 h-5 mr-2 text-purple-600" /> 予定完了メッセージ
+    <div className="mt-4 sm:mt-6 p-3 sm:p-4 border border-rose-200 rounded-lg bg-white">
+        <h3 className="text-md sm:text-lg font-semibold text-rose-700 mb-2 sm:mb-3 flex items-center">
+            <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-purple-500" /> 予定完了メッセージ
         </h3>
-        <div ref={imageRef} className={`p-6 bg-gradient-to-br from-${typeInfo.color}-100 via-${typeInfo.color}-50 to-white rounded-md shadow text-gray-800 w-[340px] mx-auto border border-${typeInfo.color}-200`}>
-            <p className={`text-center text-xl font-bold mb-1 text-${typeInfo.color}-700`}>{appointment.title || appointment.clientName}</p>
-            <p className="text-sm text-center mb-3 text-gray-600">({typeInfo.label}) のご予定、承りました。</p>
+        <div ref={imageRef} className={`p-4 sm:p-6 bg-gradient-to-br from-${typeInfo.color}-100 via-${typeInfo.color}-50 to-white rounded-md shadow text-gray-800 w-full max-w-[300px] sm:max-w-[340px] mx-auto border border-${typeInfo.color}-200`}>
+            <p className={`text-center text-lg sm:text-xl font-bold mb-1 text-${typeInfo.color}-700`}>{appointment.title || appointment.clientName}</p>
+            <p className="text-xs sm:text-sm text-center mb-2 sm:mb-3 text-gray-600">({typeInfo.label}) のご予定、承りました。</p>
             
-            <div className="mt-3 pt-3 border-t border-gray-200">
-                <p className="text-md font-semibold mb-1">日時:</p>
-                <p className={`text-lg text-center py-1.5 bg-${typeInfo.color}-50 rounded`}>
+            <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-gray-200">
+                <p className="text-sm sm:text-md font-semibold mb-0.5 sm:mb-1">日時:</p>
+                <p className={`text-md sm:text-lg text-center py-1 sm:py-1.5 bg-${typeInfo.color}-50 rounded`}>
                     {formatDateForDisplay(appointment.date)} {appointment.time}
                 </p>
             </div>
-            <p className="text-xs text-center mt-5 text-gray-500">ご確認ありがとうございます。</p>
+            <p className="text-[10px] sm:text-xs text-center mt-3 sm:mt-5 text-gray-500">ご確認ありがとうございます。</p>
         </div>
         <button
             onClick={downloadImage}
-            className="mt-4 w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105 flex items-center justify-center text-sm"
+            className="mt-3 sm:mt-4 w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg shadow-md transition-transform transform hover:scale-105 flex items-center justify-center text-xs sm:text-sm"
         >
-            <Download className="w-4 h-4 mr-2" />
+            <Download className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
             画像をダウンロード (ファイルアプリへ)
         </button>
     </div>
@@ -750,31 +752,30 @@ const AppointmentFormModal = () => {
     }
   };
 
-  // isModalOpen の状態に基づいてモーダルを表示/非表示
   if (!isModalOpen) {
     return null;
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
-      <div className="bg-white p-6 sm:p-8 rounded-lg shadow-xl w-full max-w-lg relative">
-        <button onClick={closeModal} className="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors" aria-label="閉じる">
-          <X className="w-6 h-6" />
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-2 sm:p-4 z-50 backdrop-blur-sm">
+      <div className="bg-rose-50 p-4 sm:p-6 md:p-8 rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg relative border border-rose-200">
+        <button onClick={closeModal} className="absolute top-2 right-2 sm:top-3 sm:right-3 p-1 sm:p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-100 rounded-full transition-colors" aria-label="閉じる">
+          <X className="w-5 h-5 sm:w-6 sm:h-6" />
         </button>
         
         {modalContent.type === 'form' && (
           <>
-            <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 mb-6">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-semibold text-rose-700 mb-4 sm:mb-6">
               {modalContent.data && modalContent.data.id ? '予定を編集' : '新しい予定'}
             </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
               <div>
-                <label htmlFor="scheduleType" className="block text-sm font-medium text-gray-700 mb-1">予定の種類</label>
+                <label htmlFor="scheduleType" className="block text-xs sm:text-sm font-medium text-rose-700 mb-0.5 sm:mb-1">予定の種類</label>
                 <select 
                   id="scheduleType" 
                   value={scheduleType} 
                   onChange={(e) => setScheduleType(e.target.value)} 
-                  className="w-full p-2.5 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white"
+                  className="w-full p-2 sm:p-2.5 border border-rose-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 bg-white text-xs sm:text-sm"
                 >
                   {Object.entries(scheduleTypes).map(([key, value]) => (
                     <option key={key} value={key}>{value.label}</option>
@@ -782,46 +783,46 @@ const AppointmentFormModal = () => {
                 </select>
               </div>
               <div>
-                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="title" className="block text-xs sm:text-sm font-medium text-rose-700 mb-0.5 sm:mb-1">
                   {scheduleType === 'counseling' ? 'クライアント名' : 'タイトル/件名'}
                 </label>
-                <input type="text" id="title" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full p-2.5 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required />
+                <input type="text" id="title" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full p-2 sm:p-2.5 border border-rose-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 text-xs sm:text-sm" required />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                 <div>
-                  <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">日付</label>
-                  <input type="date" id="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full p-2.5 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required />
+                  <label htmlFor="date" className="block text-xs sm:text-sm font-medium text-rose-700 mb-0.5 sm:mb-1">日付</label>
+                  <input type="date" id="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full p-2 sm:p-2.5 border border-rose-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 text-xs sm:text-sm" required />
                 </div>
-                <div className="flex space-x-2">
-                  <div>
-                    <label htmlFor="hour" className="block text-sm font-medium text-gray-700 mb-1">時</label>
-                    <select id="hour" value={hour} onChange={(e) => setHour(e.target.value)} className="w-full p-2.5 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white">
+                <div className="flex space-x-1.5 sm:space-x-2">
+                  <div className="flex-1">
+                    <label htmlFor="hour" className="block text-xs sm:text-sm font-medium text-rose-700 mb-0.5 sm:mb-1">時</label>
+                    <select id="hour" value={hour} onChange={(e) => setHour(e.target.value)} className="w-full p-2 sm:p-2.5 border border-rose-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 bg-white text-xs sm:text-sm">
                       {hourOptions.map(h => <option key={h} value={h}>{h}</option>)}
                     </select>
                   </div>
-                  <div>
-                    <label htmlFor="minute" className="block text-sm font-medium text-gray-700 mb-1">分</label>
-                    <select id="minute" value={minute} onChange={(e) => setMinute(e.target.value)} className="w-full p-2.5 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white">
+                  <div className="flex-1">
+                    <label htmlFor="minute" className="block text-xs sm:text-sm font-medium text-rose-700 mb-0.5 sm:mb-1">分</label>
+                    <select id="minute" value={minute} onChange={(e) => setMinute(e.target.value)} className="w-full p-2 sm:p-2.5 border border-rose-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 bg-white text-xs sm:text-sm">
                       {minuteOptions.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
                   </div>
                 </div>
               </div>
               <div>
-                <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-1">所要時間（分）</label>
-                <select id="duration" value={duration} onChange={(e) => setDuration(e.target.value)} className="w-full p-2.5 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white">
+                <label htmlFor="duration" className="block text-xs sm:text-sm font-medium text-rose-700 mb-0.5 sm:mb-1">所要時間（分）</label>
+                <select id="duration" value={duration} onChange={(e) => setDuration(e.target.value)} className="w-full p-2 sm:p-2.5 border border-rose-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 bg-white text-xs sm:text-sm">
                   {[30, 60, 90, 120, 150, 180].map(d => <option key={d} value={d.toString()}>{d}分</option>)}
                 </select>
               </div>
               <div>
-                <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">メモ (任意)</label>
-                <textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows="3" className="w-full p-2.5 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
+                <label htmlFor="notes" className="block text-xs sm:text-sm font-medium text-rose-700 mb-0.5 sm:mb-1">メモ (任意)</label>
+                <textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows="2" className="w-full p-2 sm:p-2.5 border border-rose-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 text-xs sm:text-sm"></textarea>
               </div>
-              <div className="flex justify-end space-x-3 pt-2">
-                <button type="button" onClick={closeModal} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md border border-gray-300 transition-colors">
+              <div className="flex justify-end space-x-2 sm:space-x-3 pt-1 sm:pt-2">
+                <button type="button" onClick={closeModal} className="px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-rose-700 bg-rose-100 hover:bg-rose-200 rounded-md border border-rose-300 transition-colors">
                   キャンセル
                 </button>
-                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md shadow-sm transition-colors">
+                <button type="submit" className="px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-white bg-rose-500 hover:bg-rose-600 rounded-md shadow-sm transition-colors">
                   {modalContent.data && modalContent.data.id ? '更新して確認へ' : '保存して確認へ'}
                 </button>
               </div>
@@ -831,12 +832,12 @@ const AppointmentFormModal = () => {
 
         {modalContent.type === 'confirmation' && lastSavedAppointment && (
           <>
-            <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 mb-4 text-center">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-semibold text-rose-700 mb-3 sm:mb-4 text-center">
               予定を保存しました！
             </h2>
             <AppointmentConfirmationImage appointment={lastSavedAppointment} />
-            <div className="mt-6 flex flex-col items-center space-y-3">
-              <button type="button" onClick={() => { setLastSavedAppointment(null); closeModal();}} className="w-full max-w-xs px-6 py-2.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md shadow-sm transition-colors">
+            <div className="mt-4 sm:mt-6 flex flex-col items-center space-y-2 sm:space-y-3">
+              <button type="button" onClick={() => { setLastSavedAppointment(null); closeModal();}} className="w-full max-w-xs px-4 py-2 sm:px-6 sm:py-2.5 text-xs sm:text-sm font-medium text-white bg-green-500 hover:bg-green-600 rounded-md shadow-sm transition-colors">
                 閉じる
               </button>
             </div>
@@ -845,13 +846,13 @@ const AppointmentFormModal = () => {
         
         {modalContent.type === 'photoSaveInfo' && (
           <>
-            <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 mb-4 flex items-center">
-                <AlertTriangle className="w-6 h-6 mr-2 text-orange-500" /> iPadの写真アプリへの保存方法
+            <h2 className="text-md sm:text-xl md:text-2xl font-semibold text-gray-800 mb-3 sm:mb-4 flex items-center">
+                <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 mr-1.5 sm:mr-2 text-orange-500" /> iPadの写真アプリへの保存方法
             </h2>
-            <div className="space-y-3 text-sm text-gray-700">
+            <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm text-gray-700">
                 <p>画像はiPadの「ファイル」アプリ内の「ダウンロード」フォルダに保存されました。</p>
                 <p>「写真」アプリに保存するには、以下の手順で操作してください：</p>
-                <ol className="list-decimal list-inside space-y-1 pl-2">
+                <ol className="list-decimal list-inside space-y-0.5 sm:space-y-1 pl-1 sm:pl-2">
                     <li>iPadのホーム画面から「ファイル」アプリを開きます。</li>
                     <li>「ダウンロード」フォルダを開き、先ほどダウンロードした画像ファイル (例: 予約確認_〇〇様_日付.png) を見つけます。</li>
                     <li>画像ファイルを長押しするか、選択して共有アイコン (四角から上矢印が出ているアイコン) をタップします。</li>
@@ -859,8 +860,8 @@ const AppointmentFormModal = () => {
                 </ol>
                 <p>これで画像が「写真」アプリに保存されます。</p>
             </div>
-            <div className="mt-6 flex justify-center">
-                <button type="button" onClick={() => { setLastSavedAppointment(null); closeModal(); }} className="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md shadow-sm transition-colors">
+            <div className="mt-4 sm:mt-6 flex justify-center">
+                <button type="button" onClick={() => { setLastSavedAppointment(null); closeModal(); }} className="px-4 py-2 sm:px-6 sm:py-2.5 text-xs sm:text-sm font-medium text-white bg-rose-500 hover:bg-rose-600 rounded-md shadow-sm transition-colors">
                     確認しました
                 </button>
             </div>
@@ -873,21 +874,20 @@ const AppointmentFormModal = () => {
 
 // Main App Component
 export default function App() {
-  // AppコンポーネントではisModalOpenを直接使用しないため、useContextの呼び出しを削除
   return (
     <AppointmentProvider>
-      <div className="min-h-screen bg-gray-100 py-8 px-4 sm:px-6 lg:px-8 font-sans">
-        <header className="mb-10 text-center">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 flex items-center justify-center">
-            <CalendarDays className="w-8 h-8 sm:w-10 sm:h-10 mr-3 text-blue-600" /> <span>スケジュール管理</span>
+      {/* 全体の背景色を非常に薄いピンク系に */}
+      <div className="min-h-screen bg-rose-50 py-4 sm:py-8 px-2 sm:px-4 lg:px-8 font-sans text-gray-800">
+        <header className="mb-6 sm:mb-10 text-center">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-rose-700 flex items-center justify-center">
+            <CalendarDays className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 mr-2 sm:mr-3 text-rose-500" /> <span>スケジュール管理</span>
           </h1>
         </header>
         <main>
           <Calendar />
-          {/* AppointmentFormModal は常にレンダリングし、表示制御はモーダル内部で行う */}
           <AppointmentFormModal />
         </main>
-        <footer className="mt-12 text-center text-sm text-gray-500">
+        <footer className="mt-8 sm:mt-12 text-center text-xs sm:text-sm text-rose-500">
           <p>&copy; {new Date().getFullYear()} スケジュール管理アプリ. All rights reserved.</p>
         </footer>
       </div>
