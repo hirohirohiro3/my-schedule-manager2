@@ -1,6 +1,7 @@
 import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
 // lucide-react からアイコンをインポート
-import { PlusCircle, Trash2, ChevronLeft, ChevronRight, CalendarDays, Clock, User, FileText, X, Ban, CheckCircle2, Briefcase, Download, Image as ImageIcon, AlertTriangle, Coffee, Zap, Calendar as CalendarIcon, Columns } from 'lucide-react';
+// Search アイコンを追加
+import { PlusCircle, Trash2, ChevronLeft, ChevronRight, CalendarDays, Clock, User, FileText, X, Ban, CheckCircle2, Briefcase, Download, Image as ImageIcon, AlertTriangle, Coffee, Zap, Calendar as CalendarIcon, Columns, Search } from 'lucide-react';
 // 注意: html2canvas はグローバルに読み込まれている必要があります。
 // 例: HTMLファイルの <head> 内に以下のスクリプトタグを追加します。
 // <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -30,6 +31,7 @@ const AppointmentProvider = ({ children }) => {
   const [lastSavedAppointment, setLastSavedAppointment] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState('month'); 
+  const [searchTerm, setSearchTerm] = useState(''); // 検索キーワード用のstate
 
   useEffect(() => {
     localStorage.setItem('appointments', JSON.stringify(appointments));
@@ -113,6 +115,7 @@ const AppointmentProvider = ({ children }) => {
         unavailableDates, toggleUnavailableDate,
         selectedDate, setSelectedDate,
         viewMode, setViewMode, 
+        searchTerm, setSearchTerm, 
         showPhotoSaveInfo
       }}
     >
@@ -139,14 +142,15 @@ const minuteOptions = ['00', '30'];
 
 // Month View Calendar
 const MonthViewCalendar = () => {
-  const { appointments, unavailableDates, selectedDate, setSelectedDate } = useContext(AppointmentContext);
+  const { appointments, unavailableDates, selectedDate, setSelectedDate, searchTerm, setSearchTerm } = useContext(AppointmentContext); 
   const [currentMonthDate, setCurrentMonthDate] = useState(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
 
   useEffect(() => {
+    // selectedDate が変わったら、カレンダーの表示月も合わせる (検索後に日付セルをクリックした場合など)
     if (selectedDate.getMonth() !== currentMonthDate.getMonth() || selectedDate.getFullYear() !== currentMonthDate.getFullYear()) {
       setCurrentMonthDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
     }
-  }, [selectedDate, currentMonthDate]);
+  }, [selectedDate]);
 
 
   const daysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
@@ -155,12 +159,16 @@ const MonthViewCalendar = () => {
   today.setHours(0, 0, 0, 0);
 
   const changeMonth = (offset) => {
-    setCurrentMonthDate(prev => new Date(prev.getFullYear(), prev.getMonth() + offset, 1));
+    const newMonthDate = new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth() + offset, 1);
+    setCurrentMonthDate(newMonthDate);
+    setSelectedDate(newMonthDate); // ★修正点: selectedDateも新しい月の1日に更新
+    setSearchTerm(''); 
   };
 
   const handleDateClick = (day) => {
     const newSelectedDate = new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth(), day);
     setSelectedDate(newSelectedDate);
+    // setSearchTerm(''); // 日付クリック時は検索をリセットしない（ユーザーの意図による）
   };
 
   const renderCalendarDays = () => {
@@ -177,7 +185,15 @@ const MonthViewCalendar = () => {
     for (let day = 1; day <= numDays; day++) {
       const dateObj = new Date(year, month, day);
       const dateStr = formatDate(dateObj);
-      const dayAppointments = appointments.filter(app => app.date === dateStr);
+      const dayAppointments = appointments.filter(app => {
+        const matchDate = app.date === dateStr;
+        if (!searchTerm) return matchDate;
+        const searchTermLower = searchTerm.toLowerCase();
+        const titleMatch = (app.title || '').toLowerCase().includes(searchTermLower);
+        const clientNameMatch = (app.clientName || '').toLowerCase().includes(searchTermLower);
+        const notesMatch = (app.notes || '').toLowerCase().includes(searchTermLower);
+        return matchDate && (titleMatch || clientNameMatch || notesMatch);
+      });
       const isTodayDate = dateStr === formatDate(today);
       const isSelectedDate = dateStr === formatDate(selectedDate);
       const isUnavailable = unavailableDates.includes(dateStr);
@@ -200,6 +216,7 @@ const MonthViewCalendar = () => {
             ${isSelectedDate && isUnavailable ? 'bg-gray-300 ring-2 ring-gray-500 shadow-md' : ''}
             ${isTodayDate && !isUnavailable ? 'font-bold text-rose-600 bg-rose-100' : ''}
             ${isTodayDate && isUnavailable ? 'font-bold text-gray-500' : ''}
+            ${searchTerm && dayAppointments.length > 0 ? 'ring-2 ring-yellow-500 bg-yellow-100' : ''}
           `}
           onClick={() => handleDateClick(day)}
         >
@@ -209,13 +226,15 @@ const MonthViewCalendar = () => {
           )}
           <div className="mt-0.5 sm:mt-1 space-y-0.5 overflow-y-auto max-h-10 sm:max-h-12 text-[8px] sm:text-xs">
             {dayAppointments.slice(0,1).map(app => (
-              <div key={app.id} className={`p-0.5 rounded truncate text-white ${
-                scheduleTypes[app.scheduleType || 'counseling']?.color ? `bg-${scheduleTypes[app.scheduleType || 'counseling'].color}-500` : 'bg-gray-400'
+              <div key={app.id} className={`p-0.5 rounded truncate ${ 
+                scheduleTypes[app.scheduleType || 'counseling']?.color ? 
+                `bg-${scheduleTypes[app.scheduleType || 'counseling'].color}-500 text-${scheduleTypes[app.scheduleType || 'counseling'].color}-50` 
+                : 'bg-gray-400 text-gray-800' 
               }`}>
                 {app.title || app.clientName}
               </div>
             ))}
-             {isUnavailable && dayAppointments.length === 0 && <span className="text-gray-400 text-[9px] sm:text-[10px]">(不可)</span>}
+             {isUnavailable && dayAppointments.length === 0 && <span className="text-slate-500 text-[9px] sm:text-[10px]">(不可)</span>}
           </div>
         </div>
       );
@@ -245,9 +264,9 @@ const MonthViewCalendar = () => {
   );
 };
 
-// Week View Calendar (MonthViewCalendarと同様のカラースキームとレスポンシブ対応を適用)
+// Week View Calendar
 const WeekViewCalendar = () => {
-  const { appointments, unavailableDates, selectedDate, setSelectedDate } = useContext(AppointmentContext);
+  const { appointments, unavailableDates, selectedDate, setSelectedDate, searchTerm, setSearchTerm } = useContext(AppointmentContext); 
   const [currentWeekStartDate, setCurrentWeekStartDate] = useState(() => {
     const today = new Date(selectedDate);
     const dayOfWeek = today.getDay(); 
@@ -257,25 +276,27 @@ const WeekViewCalendar = () => {
   });
 
   useEffect(() => {
-    const selectedWeekStart = new Date(selectedDate);
-    selectedWeekStart.setDate(selectedWeekStart.getDate() - selectedWeekStart.getDay());
-    selectedWeekStart.setHours(0,0,0,0);
-    if (selectedWeekStart.getTime() !== currentWeekStartDate.getTime()) {
-        setCurrentWeekStartDate(selectedWeekStart);
+    // selectedDate が変わったら、カレンダーの表示週も合わせる
+    const currentSelectedWeekStart = new Date(selectedDate);
+    currentSelectedWeekStart.setDate(currentSelectedWeekStart.getDate() - currentSelectedWeekStart.getDay());
+    currentSelectedWeekStart.setHours(0,0,0,0);
+    if (currentSelectedWeekStart.getTime() !== currentWeekStartDate.getTime()){
+        setCurrentWeekStartDate(currentSelectedWeekStart);
     }
-  }, [selectedDate, currentWeekStartDate]);
+  }, [selectedDate]);
 
 
   const changeWeek = (offset) => {
-    setCurrentWeekStartDate(prev => {
-      const newDate = new Date(prev);
-      newDate.setDate(newDate.getDate() + (offset * 7));
-      return newDate;
-    });
+    const newWeekStartDate = new Date(currentWeekStartDate);
+    newWeekStartDate.setDate(newWeekStartDate.getDate() + (offset * 7));
+    setCurrentWeekStartDate(newWeekStartDate);
+    setSelectedDate(newWeekStartDate); // ★修正点: selectedDateも新しい週の初日に更新
+    setSearchTerm(''); 
   };
 
   const handleDateClick = (date) => {
     setSelectedDate(new Date(date));
+    // setSearchTerm(''); 
   };
   
   const today = new Date();
@@ -299,7 +320,7 @@ const WeekViewCalendar = () => {
         <h2 className="text-base sm:text-lg md:text-xl font-semibold text-rose-700 text-center">
           {formatDate(daysOfWeek[0], 'YYYY年M月D日')} - {formatDate(daysOfWeek[6], 'M月D日')}
         </h2>
-        <button onClick={() => changeWeek(1)} className="p-1.5 sm:p-2 rounded-full hover:bg-pink-100 transition-colors" aria-label="次の週へ">
+        <button onClick={() => changeWeek(1)} className="p-1.5 sm:p-2 rounded-full hover:bg-pink-100 transition-colors" aria-label="次の月へ">
           <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 text-rose-500" />
         </button>
       </div>
@@ -309,7 +330,15 @@ const WeekViewCalendar = () => {
       <div className="grid grid-cols-7 gap-px sm:gap-1 border border-rose-100 rounded-md overflow-hidden">
         {daysOfWeek.map((day, index) => {
           const dateStr = formatDate(day);
-          const dayAppointments = appointments.filter(app => app.date === dateStr);
+          const dayAppointments = appointments.filter(app => {
+            const matchDate = app.date === dateStr;
+            if (!searchTerm) return matchDate;
+            const searchTermLower = searchTerm.toLowerCase();
+            const titleMatch = (app.title || '').toLowerCase().includes(searchTermLower);
+            const clientNameMatch = (app.clientName || '').toLowerCase().includes(searchTermLower);
+            const notesMatch = (app.notes || '').toLowerCase().includes(searchTermLower);
+            return matchDate && (titleMatch || clientNameMatch || notesMatch);
+          });
           const isTodayDate = dateStr === formatDate(today);
           const isSelectedDate = dateStr === formatDate(selectedDate);
           const isUnavailable = unavailableDates.includes(dateStr);
@@ -332,6 +361,7 @@ const WeekViewCalendar = () => {
                 ${isSelectedDate && isUnavailable ? 'bg-gray-300 ring-2 ring-gray-500 shadow-md' : ''}
                 ${isTodayDate && !isUnavailable ? 'font-bold text-rose-600 bg-rose-100' : ''}
                 ${isTodayDate && isUnavailable ? 'font-bold text-gray-500' : ''}
+                ${searchTerm && dayAppointments.length > 0 ? 'ring-2 ring-yellow-500 bg-yellow-100' : ''}
               `}
               onClick={() => handleDateClick(day)}
             >
@@ -340,14 +370,16 @@ const WeekViewCalendar = () => {
                 <div className={`absolute bottom-1 right-1 sm:bottom-1.5 sm:right-1.5 w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${dotColorClass}`}></div>
               )}
               <div className="mt-0.5 sm:mt-1 space-y-0.5 overflow-y-auto max-h-12 sm:max-h-16 text-[8px] sm:text-xs">
-                {dayAppointments.slice(0,2).map(app => (
-                  <div key={app.id} className={`p-0.5 rounded truncate text-white ${
-                    scheduleTypes[app.scheduleType || 'counseling']?.color ? `bg-${scheduleTypes[app.scheduleType || 'counseling'].color}-500` : 'bg-gray-400'
+                {dayAppointments.slice(0,2).map(app => ( 
+                  <div key={app.id} className={`p-0.5 rounded truncate ${ 
+                    scheduleTypes[app.scheduleType || 'counseling']?.color ? 
+                    `bg-${scheduleTypes[app.scheduleType || 'counseling'].color}-500 text-${scheduleTypes[app.scheduleType || 'counseling'].color}-50`
+                    : 'bg-gray-400 text-gray-800'
                   }`}>
                     {app.title || app.clientName}
                   </div>
                 ))}
-                {isUnavailable && dayAppointments.length === 0 && <span className="text-gray-400 text-[9px] sm:text-[10px]">(不可)</span>}
+                {isUnavailable && dayAppointments.length === 0 && <span className="text-slate-500 text-[9px] sm:text-[10px]">(不可)</span>}
               </div>
             </div>
           );
@@ -360,25 +392,37 @@ const WeekViewCalendar = () => {
 
 // Main Calendar Container
 const Calendar = () => {
-  const { viewMode, setViewMode, openModal, selectedDate, unavailableDates } = useContext(AppointmentContext);
+  const { viewMode, setViewMode, openModal, selectedDate, unavailableDates, searchTerm, setSearchTerm } = useContext(AppointmentContext);
 
   return (
     <div className="bg-white p-2 sm:p-4 md:p-6 rounded-lg shadow-xl w-full max-w-5xl mx-auto border border-rose-200">
-      <div className="flex justify-end mb-2 sm:mb-4 space-x-1 sm:space-x-2">
-        <button
-          onClick={() => setViewMode('month')}
-          className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-md text-[10px] sm:text-xs md:text-sm font-medium transition-colors shadow-sm
-            ${viewMode === 'month' ? 'bg-rose-500 text-white hover:bg-rose-600' : 'bg-pink-100 text-rose-700 hover:bg-pink-200'}`}
-        >
-          <CalendarIcon className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1 sm:mr-1.5" />月表示
-        </button>
-        <button
-          onClick={() => setViewMode('week')}
-          className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-md text-[10px] sm:text-xs md:text-sm font-medium transition-colors shadow-sm
-          ${viewMode === 'week' ? 'bg-rose-500 text-white hover:bg-rose-600' : 'bg-pink-100 text-rose-700 hover:bg-pink-200'}`}
-        >
-          <Columns className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1 sm:mr-1.5" />週表示
-        </button>
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-3 sm:mb-4 space-y-2 sm:space-y-0">
+        <div className="relative w-full sm:w-auto">
+          <input
+            type="text"
+            placeholder="予定を検索..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full sm:w-64 p-2 pl-8 border border-rose-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 text-xs sm:text-sm"
+          />
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        </div>
+        <div className="space-x-1 sm:space-x-2">
+          <button
+            onClick={() => setViewMode('month')}
+            className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-md text-[10px] sm:text-xs md:text-sm font-medium transition-colors shadow-sm
+              ${viewMode === 'month' ? 'bg-rose-500 text-white hover:bg-rose-600' : 'bg-pink-100 text-rose-700 hover:bg-pink-200'}`}
+          >
+            <CalendarIcon className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1 sm:mr-1.5" />月表示
+          </button>
+          <button
+            onClick={() => setViewMode('week')}
+            className={`px-2 py-1 sm:px-3 sm:py-1.5 rounded-md text-[10px] sm:text-xs md:text-sm font-medium transition-colors shadow-sm
+            ${viewMode === 'week' ? 'bg-rose-500 text-white hover:bg-rose-600' : 'bg-pink-100 text-rose-700 hover:bg-pink-200'}`}
+          >
+            <Columns className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1 sm:mr-1.5" />週表示
+          </button>
+        </div>
       </div>
 
       {viewMode === 'month' ? <MonthViewCalendar /> : <WeekViewCalendar />}
@@ -407,11 +451,20 @@ const Calendar = () => {
 
 // DWS-style Day View (30-min slots)
 const AppointmentList = () => {
-  const { appointments, openModal, deleteAppointment, unavailableDates, toggleUnavailableDate, selectedDate } = useContext(AppointmentContext);
+  const { appointments, openModal, deleteAppointment, unavailableDates, toggleUnavailableDate, selectedDate, searchTerm } = useContext(AppointmentContext); 
   const formattedSelectedDate = formatDate(selectedDate);
   const isSelectedDateUnavailable = unavailableDates.includes(formattedSelectedDate);
 
-  const dailyAppointments = appointments
+  const filteredAppointments = appointments.filter(app => {
+    if (!searchTerm) return app.date === formattedSelectedDate; 
+    const searchTermLower = searchTerm.toLowerCase();
+    const titleMatch = (app.title || '').toLowerCase().includes(searchTermLower);
+    const clientNameMatch = (app.clientName || '').toLowerCase().includes(searchTermLower);
+    const notesMatch = (app.notes || '').toLowerCase().includes(searchTermLower);
+    return titleMatch || clientNameMatch || notesMatch;
+  });
+
+  const dailyAppointments = searchTerm ? filteredAppointments : appointments
     .filter(app => app.date === formattedSelectedDate)
     .sort((a, b) => a.time.localeCompare(b.time));
 
@@ -423,7 +476,7 @@ const AppointmentList = () => {
   const dayEnd = new Date(`${formattedSelectedDate}T${workingHoursEndStr}`);
   
   const timeSlots = [];
-  if (!isSelectedDateUnavailable && dayStart < dayEnd) {
+  if (!isSelectedDateUnavailable && dayStart < dayEnd && !searchTerm) { 
     let slotIteratorTime = new Date(dayStart.getTime());
     const now = new Date();
     const isToday = formatDate(now) === formattedSelectedDate;
@@ -448,14 +501,15 @@ const AppointmentList = () => {
 
       if (slotData.status !== 'past') {
         let bookedByThisApp = null;
-        for (const app of dailyAppointments) {
+        const appointmentsForSlot = appointments.filter(app => app.date === formattedSelectedDate);
+        for (const app of appointmentsForSlot) {
           const appStart = new Date(`${app.date}T${app.time}`);
           const appEnd = new Date(appStart.getTime() + parseInt(app.duration) * 60000);
 
           if (currentSlotStartObj >= appStart && currentSlotStartObj < appEnd) {
             slotData.status = 'booked';
             slotData.appointment = app;
-            slotData.scheduleType = app.scheduleType || 'counseling';
+            slotData.scheduleType = app.scheduleType || 'counseling'; 
             bookedByThisApp = app;
             if (currentSlotStartStr === app.time) {
               slotData.durationDisplay = app.duration;
@@ -481,138 +535,150 @@ const AppointmentList = () => {
     <div className="mt-6 sm:mt-8">
       <div className="flex flex-col sm:flex-row justify-between items-center mb-3 sm:mb-4 pb-2 sm:pb-3 border-b border-rose-200">
         <h3 className="text-base sm:text-lg md:text-xl font-semibold text-rose-700 mb-2 sm:mb-0">
-          {formatDate(selectedDate, 'YYYY年M月D日')} ({dayLabels[selectedDate.getDay()]}) のスケジュール
+          {searchTerm ? '検索結果' : `${formatDate(selectedDate, 'YYYY年M月D日')} (${dayLabels[selectedDate.getDay()]}) のスケジュール`}
         </h3>
-        <button
-          onClick={() => toggleUnavailableDate(formattedSelectedDate)}
-          className={`font-semibold py-1.5 px-3 sm:py-2 sm:px-4 rounded-lg shadow-sm text-xs sm:text-sm flex items-center transition-colors
-            ${isSelectedDateUnavailable ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'}`}
-        >
-          {isSelectedDateUnavailable ? <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-1.5" /> : <Ban className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-1.5" />}
-          {isSelectedDateUnavailable ? '予約可能にする' : '予約不可にする'}
-        </button>
+        {!searchTerm && ( 
+          <button
+            onClick={() => toggleUnavailableDate(formattedSelectedDate)}
+            className={`font-semibold py-1.5 px-3 sm:py-2 sm:px-4 rounded-lg shadow-sm text-xs sm:text-sm flex items-center transition-colors
+              ${isSelectedDateUnavailable ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'}`}
+          >
+            {isSelectedDateUnavailable ? <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-1.5" /> : <Ban className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-1.5" />}
+            {isSelectedDateUnavailable ? '予約可能にする' : '予約不可にする'}
+          </button>
+        )}
       </div>
 
-      {isSelectedDateUnavailable ? (
-        <div className="p-3 sm:p-4 bg-yellow-100 border border-yellow-300 rounded-lg text-center text-yellow-800">
-          <p className="font-semibold text-sm sm:text-base">{formatDate(selectedDate)} は終日予定を入力できません。</p>
+      {searchTerm && dailyAppointments.length === 0 && (
+        <div className="p-3 sm:p-4 bg-yellow-100 border border-yellow-300 rounded-lg text-center text-yellow-800 mb-4">
+          <p className="font-semibold text-sm sm:text-base">「{searchTerm}」に一致する予定は見つかりませんでした。</p>
         </div>
-      ) : (
-        <>
-          {dailyAppointments.length > 0 && (
-             <div className="mb-4 sm:mb-6">
-              <h4 className="text-sm sm:text-md md:text-lg font-semibold text-gray-700 mb-1.5 sm:mb-2">今日の予定 (クリックで編集)</h4>
-              <ul className="space-y-1.5 sm:space-y-2">
-                {dailyAppointments.map(app => {
-                  const typeInfo = scheduleTypes[app.scheduleType || 'counseling'];
-                  return (
-                    <li key={app.id} 
-                        onClick={() => openModal('form', app)}
-                        className={`p-2 sm:p-3 rounded-lg shadow hover:shadow-md transition-shadow border cursor-pointer 
-                                    border-${typeInfo.color}-300 hover:border-${typeInfo.color}-500 bg-${typeInfo.color}-50`}>
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center">
-                          {React.cloneElement(typeInfo.icon, { className: `w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-${typeInfo.color}-600` })}
-                          <div>
-                            <p className={`font-semibold text-${typeInfo.color}-700 text-xs sm:text-sm`}>
-                              {app.title || app.clientName}
-                            </p>
-                            <p className="text-gray-600 text-[10px] sm:text-xs flex items-center mt-0.5">
-                              <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1 sm:mr-1.5 text-gray-400" /> {app.time} ({app.duration}分)
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              if (window.confirm(`${app.title || app.clientName} の予定を削除しますか？`)) { 
-                                deleteAppointment(app.id); 
-                              }
-                            }}
-                            className={`p-1 sm:p-1.5 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full transition-colors`} aria-label="削除"
-                          > <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" /> </button>
+      )}
+
+      {(searchTerm || !isSelectedDateUnavailable) && dailyAppointments.length > 0 && (
+         <div className="mb-4 sm:mb-6">
+          <h4 className="text-sm sm:text-md md:text-lg font-semibold text-gray-700 mb-1.5 sm:mb-2">
+            {searchTerm ? `「${searchTerm}」の検索結果 (${dailyAppointments.length}件)` : '今日の予定 (クリックで編集)'}
+          </h4>
+          <ul className="space-y-1.5 sm:space-y-2">
+            {dailyAppointments.map(app => {
+              const typeInfo = scheduleTypes[app.scheduleType || 'counseling'];
+              return (
+                <li key={app.id} 
+                    onClick={() => openModal('form', app)}
+                    className={`p-2 sm:p-3 rounded-lg shadow hover:shadow-md transition-shadow border cursor-pointer 
+                                border-${typeInfo.color}-300 hover:border-${typeInfo.color}-500 bg-${typeInfo.color}-50`}>
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center">
+                      {React.cloneElement(typeInfo.icon, { className: `w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-${typeInfo.color}-600` })}
+                      <div>
+                        <p className={`font-semibold text-${typeInfo.color}-700 text-xs sm:text-sm`}>
+                          {searchTerm && <span className="text-gray-500 text-[10px] mr-2">{formatDate(app.date, 'MM/DD')}</span>}
+                          {app.title || app.clientName}
+                        </p>
+                        <p className="text-gray-600 text-[10px] sm:text-xs flex items-center mt-0.5">
+                          <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1 sm:mr-1.5 text-gray-400" /> {app.time} ({app.duration}分)
+                        </p>
                       </div>
-                       {app.notes && (
-                            <p className="text-gray-500 text-[10px] sm:text-xs mt-1.5 sm:mt-2 border-t border-gray-200 pt-1.5 sm:pt-2 pl-6 sm:pl-7 flex items-start">
-                              <FileText className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1 sm:mr-1.5 text-gray-400 flex-shrink-0 mt-0.5" />
-                              <span className="whitespace-pre-wrap break-all">{app.notes}</span>
-                            </p>
-                          )}
-                    </li>
-                  );
-                })}
-              </ul>
+                    </div>
+                    <button
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          if (window.confirm(`${app.title || app.clientName} の予定を削除しますか？`)) { 
+                            deleteAppointment(app.id); 
+                          }
+                        }}
+                        className={`p-1 sm:p-1.5 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full transition-colors`} aria-label="削除"
+                      > <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" /> </button>
+                  </div>
+                   {app.notes && (
+                        <p className="text-gray-500 text-[10px] sm:text-xs mt-1.5 sm:mt-2 border-t border-gray-200 pt-1.5 sm:pt-2 pl-6 sm:pl-7 flex items-start">
+                          <FileText className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1 sm:mr-1.5 text-gray-400 flex-shrink-0 mt-0.5" />
+                          <span className="whitespace-pre-wrap break-all">{app.notes}</span>
+                        </p>
+                      )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+      
+      {!searchTerm && !isSelectedDateUnavailable && (
+        <div className={`mt-4 sm:mt-6 ${dailyAppointments.length > 0 ? 'pt-4 sm:pt-6 border-t border-rose-200' : ''}`}>
+          <h4 className="text-sm sm:text-md md:text-lg font-semibold text-gray-700 mb-2 sm:mb-3 flex items-center">
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-gray-500"/> タイムスケジュール (30分単位)
+          </h4>
+          {dayStart >= dayEnd ? (
+               <div className="flex flex-col items-center justify-center p-6 sm:p-8 text-center bg-rose-50 rounded-lg border border-rose-200 shadow-inner" style={{ minHeight: '150px' }}>
+                  <Clock className="w-8 h-8 sm:w-10 sm:h-10 mx-auto text-rose-400 mb-2 sm:mb-3" />
+                  <p className="text-md sm:text-lg font-semibold text-rose-600">稼働時間が正しく設定されていません</p>
+                  <p className="text-xs sm:text-sm text-rose-500 mt-1">開始時間と終了時間を確認してください。</p>
+              </div>
+          ) : timeSlots.length > 0 ? (
+            <div className="border border-rose-200 rounded-lg shadow-sm overflow-hidden">
+              {timeSlots.map((slot, index) => {
+                let bgColor, textColor, iconToShow, slotText, timeTextColor;
+
+                if (slot.status === 'available') {
+                  bgColor = 'bg-pink-100 hover:bg-pink-200';
+                  textColor = 'text-pink-700'; 
+                  iconToShow = <PlusCircle className="w-4 h-4 sm:w-5 sm:h-5 text-pink-600 opacity-80"/>;
+                  slotText = "(空き)";
+                  timeTextColor = 'text-pink-700';
+                } else if (slot.status === 'booked') {
+                  bgColor = slot.isContinuation ? 'bg-emerald-100' : 'bg-emerald-200 hover:bg-emerald-300';
+                  textColor = 'text-emerald-800'; 
+                  const typeInfo = scheduleTypes[slot.scheduleType || 'counseling'];
+                  iconToShow = !slot.isContinuation ? React.cloneElement(typeInfo.icon, { className: `w-3 h-3 sm:w-4 sm:h-4 ${textColor} opacity-90`}) : null;
+                  slotText = slot.isContinuation ? "〃" : `${slot.appointment.title || slot.appointment.clientName} (${slot.durationDisplay}分)`;
+                  if (slot.isContinuation) { 
+                      textColor = 'text-emerald-600'; 
+                  }
+                  timeTextColor = 'text-emerald-800'; 
+                } else { // past
+                  bgColor = 'bg-gray-100';
+                  textColor = 'text-gray-400';
+                  iconToShow = null;
+                  slotText = "(過去)";
+                  timeTextColor = 'text-gray-500';
+                }
+
+                return (
+                  <button
+                    key={index}
+                    onClick={slot.onClick}
+                    disabled={!slot.onClick}
+                    className={`w-full flex items-center justify-between p-2 sm:p-3 text-left border-b border-rose-100 last:border-b-0 transition-colors
+                      ${bgColor} ${slot.status === 'past' ? 'cursor-not-allowed' : ''}`}
+                    title={slot.status === 'available' ? `${slot.time} から予定追加` : (slot.appointment ? `${slot.appointment.title || slot.appointment.clientName} ${slot.time} (${slot.appointment.duration}分)` : '')}
+                  >
+                    <span className={`text-sm sm:text-base font-medium ${timeTextColor}`}>
+                      {slot.time}
+                    </span>
+                    <div className="flex-grow text-right px-2 sm:px-4">
+                        <span className={`text-xs sm:text-base ${textColor} truncate`}>{slotText}</span>
+                    </div>
+                    {iconToShow}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+             <div className="flex flex-col items-center justify-center p-6 sm:p-8 text-center bg-rose-50 rounded-lg border border-rose-200 shadow-inner" style={{ minHeight: `150px` }}>
+              <Zap className="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-rose-400 mb-3 sm:mb-4" />
+              <p className="text-lg sm:text-xl font-semibold text-rose-700">本日は予定がありません</p>
+              <p className="text-xs sm:text-sm text-rose-500 mt-1.5 sm:mt-2">新しい予定はカレンダー上部のボタンから追加できます。</p>
             </div>
           )}
-          
-          <div className={`mt-4 sm:mt-6 ${dailyAppointments.length > 0 ? 'pt-4 sm:pt-6 border-t border-rose-200' : ''}`}>
-            <h4 className="text-sm sm:text-md md:text-lg font-semibold text-gray-700 mb-2 sm:mb-3 flex items-center">
-              <Clock className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-gray-500"/> タイムスケジュール (30分単位)
-            </h4>
-            {dayStart >= dayEnd ? (
-                 <div className="flex flex-col items-center justify-center p-6 sm:p-8 text-center bg-rose-50 rounded-lg border border-rose-200 shadow-inner" style={{ minHeight: '150px' }}>
-                    <Clock className="w-8 h-8 sm:w-10 sm:h-10 mx-auto text-rose-400 mb-2 sm:mb-3" />
-                    <p className="text-md sm:text-lg font-semibold text-rose-600">稼働時間が正しく設定されていません</p>
-                    <p className="text-xs sm:text-sm text-rose-500 mt-1">開始時間と終了時間を確認してください。</p>
-                </div>
-            ) : timeSlots.length > 0 ? (
-              <div className="border border-rose-200 rounded-lg shadow-sm overflow-hidden">
-                {timeSlots.map((slot, index) => {
-                  const typeInfo = scheduleTypes[slot.scheduleType] || {color: 'gray'}; 
-                  let bgColor = `bg-pink-100 hover:bg-pink-200`; 
-                  let textColor = `text-pink-900`;
-                  let iconToShow = <PlusCircle className="w-4 h-4 sm:w-5 sm:h-5 text-pink-600 opacity-70"/>;
-
-                  if (slot.status === 'booked') {
-                    bgColor = slot.isContinuation ? `bg-${typeInfo.color}-100` : `bg-${typeInfo.color}-200 hover:bg-${typeInfo.color}-300`;
-                    textColor = `text-${typeInfo.color}-900`;
-                    iconToShow = !slot.isContinuation ? React.cloneElement(typeInfo.icon, { className: `w-3 h-3 sm:w-4 sm:h-4 text-${typeInfo.color}-700 opacity-90`}) : null;
-                  } else if (slot.status === 'past') {
-                    bgColor = 'bg-gray-100';
-                    textColor = 'text-gray-400';
-                    iconToShow = null;
-                  }
-
-                  return (
-                    <button
-                      key={index}
-                      onClick={slot.onClick}
-                      disabled={!slot.onClick}
-                      className={`w-full flex items-center justify-between p-2 sm:p-3 text-left border-b border-rose-100 last:border-b-0 transition-colors
-                        ${bgColor} ${slot.status === 'past' ? 'cursor-not-allowed' : ''}`}
-                      title={slot.status === 'available' ? `${slot.time} から予定追加` : (slot.appointment ? `${slot.appointment.title || slot.appointment.clientName} ${slot.time} (${slot.appointment.duration}分)` : '')}
-                    >
-                      <span className={`text-sm sm:text-base font-medium ${textColor}`}>
-                        {slot.time}
-                      </span>
-                      <div className="flex-grow text-right px-2 sm:px-4">
-                        {slot.status === 'booked' && slot.appointment && !slot.isContinuation && (
-                          <span className={`text-xs sm:text-base text-${typeInfo.color}-800 truncate`}>{slot.appointment.title || slot.appointment.clientName} ({slot.durationDisplay}分)</span>
-                        )}
-                        {slot.status === 'booked' && slot.isContinuation && (
-                          <span className={`text-[10px] sm:text-sm text-${typeInfo.color}-600`}>〃</span> 
-                        )}
-                        {slot.status === 'available' && (
-                          <span className="text-sm sm:text-base text-pink-800">(空き)</span>
-                        )}
-                         {slot.status === 'past' && (
-                          <span className="text-sm sm:text-base text-gray-500">(過去)</span>
-                        )}
-                      </div>
-                      {iconToShow}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-               <div className="flex flex-col items-center justify-center p-6 sm:p-8 text-center bg-rose-50 rounded-lg border border-rose-200 shadow-inner" style={{ minHeight: `150px` }}>
-                <Zap className="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-rose-400 mb-3 sm:mb-4" />
-                <p className="text-lg sm:text-xl font-semibold text-rose-700">本日は予定がありません</p>
-                <p className="text-xs sm:text-sm text-rose-500 mt-1.5 sm:mt-2">新しい予定はカレンダー上部のボタンから追加できます。</p>
-              </div>
-            )}
+        </div>
+      )}
+      {isSelectedDateUnavailable && !searchTerm && dailyAppointments.length === 0 && (
+         <div className="flex flex-col items-center justify-center p-6 sm:p-8 text-center bg-rose-50 rounded-lg border border-rose-200 shadow-inner mt-4" style={{ minHeight: `150px` }}>
+            <Zap className="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-rose-400 mb-3 sm:mb-4" />
+            <p className="text-lg sm:text-xl font-semibold text-rose-700">本日は予定がありません</p>
+            <p className="text-xs sm:text-sm text-rose-500 mt-1.5 sm:mt-2">予約不可日に設定されています。</p>
           </div>
-        </>
       )}
     </div>
   );
@@ -876,7 +942,6 @@ const AppointmentFormModal = () => {
 export default function App() {
   return (
     <AppointmentProvider>
-      {/* 全体の背景色を非常に薄いピンク系に */}
       <div className="min-h-screen bg-rose-50 py-4 sm:py-8 px-2 sm:px-4 lg:px-8 font-sans text-gray-800">
         <header className="mb-6 sm:mb-10 text-center">
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-rose-700 flex items-center justify-center">
