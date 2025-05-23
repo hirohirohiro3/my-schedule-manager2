@@ -1,57 +1,108 @@
 import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
+// Firebase関連のインポート
+import { auth, db } from './firebase.js'; // firebase.js からインポート (dbは将来的に使用)
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged 
+} from "firebase/auth";
+
 // lucide-react からアイコンをインポート
-// Search アイコンを追加
-import { PlusCircle, Trash2, ChevronLeft, ChevronRight, CalendarDays, Clock, User, FileText, X, Ban, CheckCircle2, Briefcase, Download, Image as ImageIcon, AlertTriangle, Coffee, Zap, Calendar as CalendarIcon, Columns, Search } from 'lucide-react';
+import { LogIn, LogOut, UserPlus, PlusCircle, Trash2, ChevronLeft, ChevronRight, CalendarDays, Clock, User, FileText, X, Ban, CheckCircle2, Briefcase, Download, Image as ImageIcon, AlertTriangle, Coffee, Zap, Calendar as CalendarIcon, Columns, Search } from 'lucide-react';
 // 注意: html2canvas はグローバルに読み込まれている必要があります。
 // 例: HTMLファイルの <head> 内に以下のスクリプトタグを追加します。
 // <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-// Appointment Context
-const AppointmentContext = createContext();
+// AppContext
+const AppContext = createContext();
 
-// 新しいカラースキームに合わせた予定の種類
 const scheduleTypes = {
-  counseling: { label: 'カウンセリング', color: 'pink', icon: <User className="w-4 h-4 mr-1.5" /> }, // ピンク系
-  work: { label: '仕事', color: 'purple', icon: <Briefcase className="w-4 h-4 mr-1.5" /> },   // ラベンダー(紫)系
-  private: { label: 'プライベート', color: 'red', icon: <Coffee className="w-4 h-4 mr-1.5" /> },  // コーラル(赤系ピンク)
+  counseling: { label: 'カウンセリング', color: 'pink', icon: <User className="w-4 h-4 mr-1.5" /> },
+  work: { label: '仕事', color: 'purple', icon: <Briefcase className="w-4 h-4 mr-1.5" /> },
+  private: { label: 'プライベート', color: 'red', icon: <Coffee className="w-4 h-4 mr-1.5" /> },
 };
 
-const AppointmentProvider = ({ children }) => {
-  const [appointments, setAppointments] = useState(() => {
-    const localData = localStorage.getItem('appointments');
-    return localData ? JSON.parse(localData) : [];
-  });
-  const [unavailableDates, setUnavailableDates] = useState(() => {
-    const localData = localStorage.getItem('unavailableDates');
-    return localData ? JSON.parse(localData) : [];
-  });
+const AppProvider = ({ children }) => {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loadingAuth, setLoadingAuth] = useState(true);
 
+  const [appointments, setAppointments] = useState([]);
+  const [unavailableDates, setUnavailableDates] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState({ type: 'form', data: null });
   const [lastSavedAppointment, setLastSavedAppointment] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState('month'); 
-  const [searchTerm, setSearchTerm] = useState(''); // 検索キーワード用のstate
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    localStorage.setItem('appointments', JSON.stringify(appointments));
-  }, [appointments]);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      console.log("Auth state changed. User:", user ? user.uid : null);
+      setCurrentUser(user);
+      setLoadingAuth(false);
+      if (user) {
+        const userAppointments = localStorage.getItem(`appointments_${user.uid}`);
+        setAppointments(userAppointments ? JSON.parse(userAppointments) : []);
+        
+        const userUnavailableDates = localStorage.getItem(`unavailableDates_${user.uid}`);
+        setUnavailableDates(userUnavailableDates ? JSON.parse(userUnavailableDates) : []);
+        
+        console.log("User is signed in:", user.email);
+      } else {
+        setAppointments([]); 
+        setUnavailableDates([]);
+        console.log("User is signed out");
+      }
+    });
+    return unsubscribe; 
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem('unavailableDates', JSON.stringify(unavailableDates));
-  }, [unavailableDates]);
+    if (currentUser) { 
+        // appointments が空配列の場合でも、以前のデータを削除するために localStorage 操作を行う
+        if (appointments.length > 0) {
+            localStorage.setItem(`appointments_${currentUser.uid}`, JSON.stringify(appointments));
+        } else {
+            localStorage.removeItem(`appointments_${currentUser.uid}`);
+        }
+    }
+  }, [appointments, currentUser]);
+
+  useEffect(() => {
+    if (currentUser) {
+        if (unavailableDates.length > 0) {
+            localStorage.setItem(`unavailableDates_${currentUser.uid}`, JSON.stringify(unavailableDates));
+        } else {
+            localStorage.removeItem(`unavailableDates_${currentUser.uid}`);
+        }
+    }
+  }, [unavailableDates, currentUser]);
+
+  const signup = (email, password) => {
+    return createUserWithEmailAndPassword(auth, email, password);
+  };
+
+  const login = (email, password) => {
+    return signInWithEmailAndPassword(auth, email, password);
+  };
+
+  const logout = () => {
+    setSearchTerm('');
+    return signOut(auth);
+  };
 
   const addAppointment = (appointment) => {
     const newAppointment = { ...appointment, id: Date.now().toString() };
-    setAppointments([...appointments, newAppointment].sort((a,b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`)));
+    setAppointments(prev => [...prev, newAppointment].sort((a,b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`)));
     setLastSavedAppointment(newAppointment);
     setModalContent({ type: 'confirmation', data: newAppointment });
     setIsModalOpen(true);
   };
 
   const updateAppointment = (updatedAppointment) => {
-    setAppointments(
-      appointments.map((app) =>
+    setAppointments(prev => 
+      prev.map((app) =>
         app.id === updatedAppointment.id ? updatedAppointment : app
       ).sort((a,b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`))
     );
@@ -76,7 +127,7 @@ const AppointmentProvider = ({ children }) => {
     let initialData = data;
     if (type === 'form' && !data?.id) { 
       const defaultDate = formatDate(selectedDate);
-      const defaultHour = data?.hour || "09";
+      const defaultHour = data?.hour || hourOptions[0] || "08"; 
       const defaultMinute = data?.minute || "00";
       initialData = {
         isNew: true,
@@ -106,21 +157,30 @@ const AppointmentProvider = ({ children }) => {
     setIsModalOpen(true);
   }
 
+  const value = {
+    currentUser, 
+    loadingAuth,
+    signup,
+    login,
+    logout,
+    appointments, addAppointment, updateAppointment, deleteAppointment,
+    isModalOpen, openModal, closeModal, modalContent, setModalContent,
+    lastSavedAppointment, setLastSavedAppointment,
+    unavailableDates, toggleUnavailableDate,
+    selectedDate, setSelectedDate,
+    viewMode, setViewMode, 
+    searchTerm, setSearchTerm, 
+    showPhotoSaveInfo
+  };
+
+  if (loadingAuth) {
+    return <div className="min-h-screen flex items-center justify-center bg-rose-50 text-rose-700 text-lg">認証情報を読み込み中...</div>;
+  }
+
   return (
-    <AppointmentContext.Provider
-      value={{
-        appointments, addAppointment, updateAppointment, deleteAppointment,
-        isModalOpen, openModal, closeModal, modalContent, setModalContent,
-        lastSavedAppointment, setLastSavedAppointment,
-        unavailableDates, toggleUnavailableDate,
-        selectedDate, setSelectedDate,
-        viewMode, setViewMode, 
-        searchTerm, setSearchTerm, 
-        showPhotoSaveInfo
-      }}
-    >
+    <AppContext.Provider value={value}>
       {children}
-    </AppointmentContext.Provider>
+    </AppContext.Provider>
   );
 };
 
@@ -136,21 +196,20 @@ const formatDate = (date, format = 'YYYY-MM-DD') => {
   return `${year}-${month}-${day}`;
 };
 
-
-const hourOptions = Array.from({ length: 12 }, (_, i) => (i + 9).toString().padStart(2, '0')); 
+const hourOptions = Array.from({ length: 22 - 8 }, (_, i) => (i + 8).toString().padStart(2, '0')); 
 const minuteOptions = ['00', '30']; 
+const dayLabels = ['日', '月', '火', '水', '木', '金', '土'];
 
-// Month View Calendar
+
 const MonthViewCalendar = () => {
-  const { appointments, unavailableDates, selectedDate, setSelectedDate, searchTerm, setSearchTerm } = useContext(AppointmentContext); 
+  const { appointments, unavailableDates, selectedDate, setSelectedDate, searchTerm, setSearchTerm } = useContext(AppContext); 
   const [currentMonthDate, setCurrentMonthDate] = useState(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
 
   useEffect(() => {
-    // selectedDate が変わったら、カレンダーの表示月も合わせる (検索後に日付セルをクリックした場合など)
     if (selectedDate.getMonth() !== currentMonthDate.getMonth() || selectedDate.getFullYear() !== currentMonthDate.getFullYear()) {
       setCurrentMonthDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
     }
-  }, [selectedDate]);
+  }, [selectedDate, currentMonthDate]); 
 
 
   const daysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
@@ -161,14 +220,13 @@ const MonthViewCalendar = () => {
   const changeMonth = (offset) => {
     const newMonthDate = new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth() + offset, 1);
     setCurrentMonthDate(newMonthDate);
-    setSelectedDate(newMonthDate); // ★修正点: selectedDateも新しい月の1日に更新
+    setSelectedDate(newMonthDate); 
     setSearchTerm(''); 
   };
 
   const handleDateClick = (day) => {
     const newSelectedDate = new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth(), day);
     setSelectedDate(newSelectedDate);
-    // setSearchTerm(''); // 日付クリック時は検索をリセットしない（ユーザーの意図による）
   };
 
   const renderCalendarDays = () => {
@@ -241,8 +299,7 @@ const MonthViewCalendar = () => {
     }
     return daysArray;
   };
-  const dayLabels = ['日', '月', '火', '水', '木', '金', '土'];
-
+  
   return (
     <>
       <div className="flex items-center justify-between mb-2 sm:mb-4">
@@ -264,9 +321,8 @@ const MonthViewCalendar = () => {
   );
 };
 
-// Week View Calendar
 const WeekViewCalendar = () => {
-  const { appointments, unavailableDates, selectedDate, setSelectedDate, searchTerm, setSearchTerm } = useContext(AppointmentContext); 
+  const { appointments, unavailableDates, selectedDate, setSelectedDate, searchTerm, setSearchTerm } = useContext(AppContext); 
   const [currentWeekStartDate, setCurrentWeekStartDate] = useState(() => {
     const today = new Date(selectedDate);
     const dayOfWeek = today.getDay(); 
@@ -276,27 +332,25 @@ const WeekViewCalendar = () => {
   });
 
   useEffect(() => {
-    // selectedDate が変わったら、カレンダーの表示週も合わせる
     const currentSelectedWeekStart = new Date(selectedDate);
     currentSelectedWeekStart.setDate(currentSelectedWeekStart.getDate() - currentSelectedWeekStart.getDay());
     currentSelectedWeekStart.setHours(0,0,0,0);
     if (currentSelectedWeekStart.getTime() !== currentWeekStartDate.getTime()){
         setCurrentWeekStartDate(currentSelectedWeekStart);
     }
-  }, [selectedDate]);
+  }, [selectedDate, currentWeekStartDate]); 
 
 
   const changeWeek = (offset) => {
     const newWeekStartDate = new Date(currentWeekStartDate);
     newWeekStartDate.setDate(newWeekStartDate.getDate() + (offset * 7));
     setCurrentWeekStartDate(newWeekStartDate);
-    setSelectedDate(newWeekStartDate); // ★修正点: selectedDateも新しい週の初日に更新
+    setSelectedDate(newWeekStartDate); 
     setSearchTerm(''); 
   };
 
   const handleDateClick = (date) => {
     setSelectedDate(new Date(date));
-    // setSearchTerm(''); 
   };
   
   const today = new Date();
@@ -309,8 +363,6 @@ const WeekViewCalendar = () => {
     daysOfWeek.push(day);
   }
   
-  const dayLabels = ['日', '月', '火', '水', '木', '金', '土'];
-
   return (
     <>
       <div className="flex items-center justify-between mb-2 sm:mb-4">
@@ -389,10 +441,8 @@ const WeekViewCalendar = () => {
   );
 };
 
-
-// Main Calendar Container
 const Calendar = () => {
-  const { viewMode, setViewMode, openModal, selectedDate, unavailableDates, searchTerm, setSearchTerm } = useContext(AppointmentContext);
+  const { viewMode, setViewMode, openModal, selectedDate, unavailableDates, searchTerm, setSearchTerm } = useContext(AppContext);
 
   return (
     <div className="bg-white p-2 sm:p-4 md:p-6 rounded-lg shadow-xl w-full max-w-5xl mx-auto border border-rose-200">
@@ -448,10 +498,8 @@ const Calendar = () => {
   );
 };
 
-
-// DWS-style Day View (30-min slots)
 const AppointmentList = () => {
-  const { appointments, openModal, deleteAppointment, unavailableDates, toggleUnavailableDate, selectedDate, searchTerm } = useContext(AppointmentContext); 
+  const { appointments, openModal, deleteAppointment, unavailableDates, toggleUnavailableDate, selectedDate, searchTerm } = useContext(AppContext); 
   const formattedSelectedDate = formatDate(selectedDate);
   const isSelectedDateUnavailable = unavailableDates.includes(formattedSelectedDate);
 
@@ -468,8 +516,8 @@ const AppointmentList = () => {
     .filter(app => app.date === formattedSelectedDate)
     .sort((a, b) => a.time.localeCompare(b.time));
 
-  const workingHoursStartStr = "09:00";
-  const workingHoursEndStr = "18:00";
+  const workingHoursStartStr = "08:00";
+  const workingHoursEndStr = "22:00";
   const slotIntervalMinutes = 30; 
 
   const dayStart = new Date(`${formattedSelectedDate}T${workingHoursStartStr}`);
@@ -683,80 +731,110 @@ const AppointmentList = () => {
     </div>
   );
 };
-const dayLabels = ['日', '月', '火', '水', '木', '金', '土'];
 
-// Appointment Confirmation Image Component
 const AppointmentConfirmationImage = ({ appointment }) => {
   const imageRef = useRef(null);
-  const { showPhotoSaveInfo } = useContext(AppointmentContext);
+  const { showPhotoSaveInfo } = useContext(AppContext); 
+  const [generatedImage, setGeneratedImage] = useState(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const downloadImage = () => {
-    if (imageRef.current) {
-      if (typeof window.html2canvas === 'function') {
-        window.html2canvas(imageRef.current, { useCORS: true, backgroundColor: '#ffffff', scale: 2 })
-          .then(canvas => {
-            const image = canvas.toDataURL('image/png');
-            const link = document.createElement('a');
-            link.href = image;
-            link.download = `予約確認_${appointment.title || appointment.clientName}_${appointment.date}.png`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            showPhotoSaveInfo();
-          }).catch(err => {
-            console.error("画像のエクスポートに失敗しました:", err);
-            alert("画像の生成に失敗しました。コンソールを確認してください。");
-          });
-      } else {
-        console.error("html2canvas is not loaded.");
-        alert("画像生成ライブラリ(html2canvas)が読み込まれていません。");
-      }
+  useEffect(() => {
+    if (appointment && imageRef.current && typeof window.html2canvas === 'function') {
+      if (isGenerating) return; 
+
+      setIsGenerating(true);
+      setGeneratedImage(null);
+      console.log("html2canvas: process started for", appointment.id);
+
+      const elementToCapture = imageRef.current;
+      const originalBackgroundColor = elementToCapture.style.backgroundColor;
+      elementToCapture.style.backgroundColor = 'white'; 
+
+      window.html2canvas(elementToCapture, {
+        useCORS: true,
+        scale: 2,
+        backgroundColor: '#ffffff', 
+      })
+      .then(canvas => {
+        console.log("html2canvas: process succeeded for", appointment.id);
+        setGeneratedImage(canvas.toDataURL('image/png'));
+      }).catch(err => {
+        console.error("html2canvas: process failed for", appointment.id, err);
+        alert("画像の生成に失敗しました。コンソールを確認してください。");
+      }).finally(() => {
+        setIsGenerating(false);
+        elementToCapture.style.backgroundColor = originalBackgroundColor; 
+      });
+    } else if (!appointment) {
+      setGeneratedImage(null); 
+      setIsGenerating(false); 
     }
-  };
-  
-  if (!appointment) return null;
+  }, [appointment]); 
+
   const formatDateForDisplay = (dateStr) => {
     const [year, month, day] = dateStr.split('-');
     return `${year}年${month}月${day}日`;
   };
+  
+  if (!appointment) return null;
   const typeInfo = scheduleTypes[appointment.scheduleType || 'counseling'];
+  const imageRefId = `appointment-card-for-capture-${appointment.id}`;
+
 
   return (
     <div className="mt-4 sm:mt-6 p-3 sm:p-4 border border-rose-200 rounded-lg bg-white">
         <h3 className="text-md sm:text-lg font-semibold text-rose-700 mb-2 sm:mb-3 flex items-center">
             <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-purple-500" /> 予定完了メッセージ
         </h3>
-        <div ref={imageRef} className={`p-4 sm:p-6 bg-gradient-to-br from-${typeInfo.color}-100 via-${typeInfo.color}-50 to-white rounded-md shadow text-gray-800 w-full max-w-[300px] sm:max-w-[340px] mx-auto border border-${typeInfo.color}-200`}>
-            <p className={`text-center text-lg sm:text-xl font-bold mb-1 text-${typeInfo.color}-700`}>{appointment.title || appointment.clientName}</p>
-            <p className="text-xs sm:text-sm text-center mb-2 sm:mb-3 text-gray-600">({typeInfo.label}) のご予定、承りました。</p>
-            
-            <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-gray-200">
-                <p className="text-sm sm:text-md font-semibold mb-0.5 sm:mb-1">日時:</p>
-                <p className={`text-md sm:text-lg text-center py-1 sm:py-1.5 bg-${typeInfo.color}-50 rounded`}>
-                    {formatDateForDisplay(appointment.date)} {appointment.time}
-                </p>
+        
+        {isGenerating && !generatedImage && (
+            <div className="text-center py-4 text-gray-500">画像を生成中です...</div>
+        )}
+        {generatedImage && (
+            <div className="mb-3 text-center">
+                <img src={generatedImage} alt="予約確認画像" className="max-w-full h-auto mx-auto border border-gray-300 rounded shadow-md" />
+                <p className="text-xs text-gray-500 mt-2">画像を長押し（または右クリック）して「画像を保存」などを選択してください。</p>
             </div>
-            <p className="text-[10px] sm:text-xs text-center mt-3 sm:mt-5 text-gray-500">ご確認ありがとうございます。</p>
+        )}
+
+        <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '340px' }}>
+            <div 
+                id={imageRefId} 
+                ref={imageRef} 
+                className={`p-6 bg-white text-gray-800 border border-gray-300 rounded-lg shadow-lg`}
+            >
+                <p className={`text-center text-xl font-bold mb-1.5 text-${typeInfo.color}-700`}>{appointment.title || appointment.clientName}</p>
+                <p className="text-sm text-center mb-2.5 text-gray-600">({typeInfo.label}) のご予定、承りました。</p>
+                
+                <div className="mt-2.5 pt-2.5 border-t border-gray-200">
+                    <p className="text-base font-semibold mb-1">日時:</p>
+                    <p className={`text-lg text-center py-1.5 bg-${typeInfo.color}-50 rounded`}>
+                        {formatDateForDisplay(appointment.date)} {appointment.time}
+                    </p>
+                </div>
+                <p className="text-sm text-center mt-4 text-gray-500">ご確認ありがとうございます。</p>
+            </div>
         </div>
-        <button
-            onClick={downloadImage}
-            className="mt-3 sm:mt-4 w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg shadow-md transition-transform transform hover:scale-105 flex items-center justify-center text-xs sm:text-sm"
+         <button
+            onClick={showPhotoSaveInfo} 
+            disabled={!generatedImage}
+            className={`mt-3 sm:mt-4 w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg shadow-md transition-transform transform hover:scale-105 flex items-center justify-center text-xs sm:text-sm
+                        ${!generatedImage ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
             <Download className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-            画像をダウンロード (ファイルアプリへ)
+            保存方法を確認 (iPad)
         </button>
     </div>
   );
 };
 
-// Modal Component
 const AppointmentFormModal = () => {
   const { 
     isModalOpen, closeModal, addAppointment, updateAppointment, 
     modalContent, unavailableDates, selectedDate: contextSelectedDate,
     lastSavedAppointment, 
     setLastSavedAppointment 
-  } = useContext(AppointmentContext);
+  } = useContext(AppContext); 
   
   const [title, setTitle] = useState(''); 
   const [date, setDate] = useState('');
@@ -938,24 +1016,138 @@ const AppointmentFormModal = () => {
   );
 };
 
-// Main App Component
-export default function App() {
+// --- 認証ページコンポーネント ---
+const AuthPage = () => {
+  const [isLoginView, setIsLoginView] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { login, signup } = useContext(AppContext);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      if (isLoginView) {
+        await login(email, password);
+      } else {
+        await signup(email, password);
+      }
+    } catch (err) {
+      setError(`処理に失敗しました: ${err.message}`);
+    }
+    setLoading(false);
+  };
+
   return (
-    <AppointmentProvider>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-rose-100 p-4">
+      <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-2xl border border-rose-200">
+        <h2 className="text-3xl font-bold text-rose-700 text-center mb-8">
+          {isLoginView ? 'ログイン' : '新規登録'}
+        </h2>
+        {error && <p className="bg-red-100 text-red-700 p-3 rounded-md mb-4 text-sm">{error}</p>}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label htmlFor="email-auth" className="block text-sm font-medium text-rose-700 mb-1">
+              メールアドレス
+            </label>
+            <input
+              id="email-auth"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full p-3 border border-rose-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 placeholder-gray-400"
+              placeholder="you@example.com"
+            />
+          </div>
+          <div>
+            <label htmlFor="password-auth"className="block text-sm font-medium text-rose-700 mb-1">
+              パスワード
+            </label>
+            <input
+              id="password-auth"
+              name="password"
+              type="password"
+              autoComplete={isLoginView ? "current-password" : "new-password"}
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full p-3 border border-rose-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 placeholder-gray-400"
+              placeholder="********"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-rose-500 hover:bg-rose-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+          >
+            {loading ? '処理中...' : (isLoginView ? <><LogIn className="inline mr-2 h-5 w-5"/>ログイン</> : <><UserPlus className="inline mr-2 h-5 w-5"/>登録する</>)}
+          </button>
+        </form>
+        <p className="mt-8 text-center text-sm text-gray-600">
+          {isLoginView ? 'アカウントをお持ちでないですか？ ' : '既にアカウントをお持ちですか？ '}
+          <button
+            onClick={() => { setIsLoginView(!isLoginView); setError(''); }}
+            className="font-medium text-rose-600 hover:text-rose-500 underline"
+          >
+            {isLoginView ? '新規登録へ' : 'ログインへ'}
+          </button>
+        </p>
+      </div>
+       <footer className="mt-12 text-center text-xs text-rose-500">
+          <p>&copy; {new Date().getFullYear()} スケジュール管理アプリ.</p>
+        </footer>
+    </div>
+  );
+};
+
+
+// Main App Component (認証状態によって表示を切り替え)
+export default function App() {
+  const AppContent = () => {
+    const { currentUser, logout } = useContext(AppContext); 
+
+    if (!currentUser) {
+      return <AuthPage />;
+    }
+
+    return (
       <div className="min-h-screen bg-rose-50 py-4 sm:py-8 px-2 sm:px-4 lg:px-8 font-sans text-gray-800">
-        <header className="mb-6 sm:mb-10 text-center">
+        <header className="mb-6 sm:mb-10 text-center relative">
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-rose-700 flex items-center justify-center">
             <CalendarDays className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 mr-2 sm:mr-3 text-rose-500" /> <span>スケジュール管理</span>
           </h1>
+          {currentUser && (
+            <div className="absolute top-0 right-0 mt-2 mr-2 sm:mt-3 sm:mr-4 flex items-center space-x-2">
+              <span className="text-xs sm:text-sm text-rose-600 hidden sm:inline">{currentUser.email}</span>
+              <button 
+                onClick={logout}
+                className="bg-rose-200 hover:bg-rose-300 text-rose-700 font-semibold py-1 px-2 sm:py-1.5 sm:px-3 rounded-md shadow text-xs sm:text-sm flex items-center"
+              >
+                <LogOut className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-1.5"/>ログアウト
+              </button>
+            </div>
+          )}
         </header>
         <main>
-          <Calendar />
+          <Calendar /> 
           <AppointmentFormModal />
         </main>
         <footer className="mt-8 sm:mt-12 text-center text-xs sm:text-sm text-rose-500">
           <p>&copy; {new Date().getFullYear()} スケジュール管理アプリ. All rights reserved.</p>
         </footer>
       </div>
-    </AppointmentProvider>
+    );
+  };
+
+  return (
+    <AppProvider>
+      <AppContent />
+    </AppProvider>
   );
 }
